@@ -10,4 +10,8 @@ typedef enum VerticalAlignment {
     BOTTOM,
 } VerticalAlignment;
 
+typedef struct Game Game;
+
+void drawGame(Game *game);
+
 # endif

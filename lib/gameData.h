@@ -29,6 +29,11 @@ typedef enum MenuButton {
     QUIT,
 } MenuButton;
 
+typedef enum ScreenLimit {
+    LEFT,
+    RIGHT,
+} ScreenLimit;
+
 // NOTE: That should be here??
 // typedef struct TextButton {
 //     Font font;
@@ -43,7 +48,6 @@ typedef struct ColdGameData {
     float shipDelaysToFire[2];
     float screenLimits[2];
     float enemyShipDelayToFire;
-    float enemyShipSpeed;
     float projectileSpeed;
     float powerupDuration;
     float hordeSpeedIncrease;
@@ -53,17 +57,19 @@ typedef struct ColdGameData {
 } ColdGameData;
 
 typedef struct HotGameData {
-    double fastShotRemainingTime;
-    double fastMoveRemainingTime;
+    double remainingTimeFastShot;
+    double remainingTimeFastMove;
+    double remainingTimeShipToFire;
     double remainingTimeEnemyShipAlarm;
-    double lastFrameTime;
-    double shipLastShotTime;
-    double enemyShipLastShotTime;
+    double remainingTimeEnemyShipToFire;
+    float enemyShipSpeed;
     float hordeSpeed;
     GameState gameState;
     MenuButton menuButton;
     Input input;
     bool enemyShipGoingLeft;
+    // TODO: Revisit that name and logic
+    bool hordeDown;
 } HotGameData;
 
 typedef struct Sounds {
@@ -97,7 +103,7 @@ typedef struct Animation {
     Rectangle enemyShipFrame;
     Rectangle powerupFrame;
     float timeRemainingToChangeFrame;
-    int enemyCurrentFrame;
+    int alienCurrentFrame;
 } Animation;
 
 typedef struct Game {
@@ -111,12 +117,16 @@ typedef struct Game {
     Sounds *sounds;
     Textures *textures;
     Animation *animation;
-    float screenHeight;
-    float screenWidth;
+    int screenHeight;
+    int screenWidth;
     uint16_t nBullets;
     uint16_t nPowerups;
     uint16_t enemiesAlive;
     uint8_t hordeLastAlive;
 } Game;
+
+void initGame(Game *game);
+void rebootGame(Game* game);
+void cleanupGame(Game *game);
 
 # endif

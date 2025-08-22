@@ -1,5 +1,6 @@
 # include <stdint.h>
 # include <raylib.h>
+# include <string.h>
 
 # include "entity.h"
 # include "gameData.h"
@@ -88,9 +89,10 @@ void drawTextCentered(
     Rectangle anchor,
     Font font
 ) {
-    Vector2 textSize = MeasureTextEx(font, text, fontSize, 0.0f);
+    float spacing = 5.0f;
+    Vector2 textSize = MeasureTextEx(font, text, fontSize, spacing);
     Vector2 textPosition = {
-        .x = anchor.x + (anchor.width - textSize.x) / 2,
+        .x = anchor.x + (anchor.width - textSize.x) / 2.0f,
         .y = anchor.y
     };
 
@@ -110,21 +112,19 @@ void drawTextCentered(
         default: break;
     }
 
-    DrawTextEx(font, text, textPosition, fontSize, 5.0f, BLACK);
+    DrawTextEx(font, text, textPosition, fontSize, spacing, BLACK);
 }
 
-void drawEndStatus(GameState gameState) {
-    switch (gameState) {
-        case WIN:
-        {
-
-        } break;
-        case LOSE:
-        {
-
-        } break;
-        default: break;
+void drawEndStatus(Game *game) {
+    char message[9];
+    if (game->hotData->gameState == WIN) {
+        strcpy(message, "VICTORY");
+    } else {
+        strcpy(message, "DEFEATED");
     }
+
+    float posX = (game->screenWidth - MeasureText(message, 200))/2.0f;
+    DrawText(message, posX, 150.0f, 200, RAYWHITE);
 }
 
 void drawConnectingScreen() {
@@ -184,6 +184,9 @@ void drawMenu(Game *game) {
 }
 
 void drawGame(Game *game) {
+    ClearBackground(BLACK);
+    DrawFPS(10, 10);
+
     drawEntity(game, &game->ship);
     drawEntity(game, &game->enemyShip);
     
@@ -211,7 +214,7 @@ void drawGame(Game *game) {
     }
 
     if (game->hotData->gameState == WIN || game->hotData->gameState == LOSE) {
-        drawEndStatus(game->hotData->gameState);
+        drawEndStatus(game);
     }
 
     if (game->hotData->gameState == CONNECTING) {

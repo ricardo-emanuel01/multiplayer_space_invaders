@@ -23,16 +23,26 @@ void resetIterator(EntitiesIterator *it) {
     switch (it->type) {
         case BULLETS_AT_SHIP:
         {
-            for (it->currentIndex = 0; it->currentIndex < it->size && it->entities[it->currentIndex].state != ACTIVE && it->entities[it->currentIndex].up; ++it->currentIndex);
+            it->currentIndex = 0;
+            while (!iteratorReachedEnd(it) && (getCurrentEntity(it)->state != ACTIVE || getCurrentEntity(it)->up)) {
+                it->currentIndex++;
+            }
         } break;
         case BULLETS_AT_ENEMIES:
         {
-            for (it->currentIndex = 0; it->currentIndex < it->size && it->entities[it->currentIndex].state != ACTIVE && !it->entities[it->currentIndex].up; ++it->currentIndex);
+            it->currentIndex = 0;
+            while (!iteratorReachedEnd(it) && (getCurrentEntity(it)->state != ACTIVE || !getCurrentEntity(it)->up)) {
+                it->currentIndex++;
+            }
         } break;
         case ALIENS:
         case POWERUPS:
+        case BULLETS:
         {
-            for (it->currentIndex = 0; it->currentIndex < it->size && it->entities[it->currentIndex].state != ACTIVE; ++it->currentIndex);
+            it->currentIndex = 0;
+            while (!iteratorReachedEnd(it) && getCurrentEntity(it)->state != ACTIVE) {
+                it->currentIndex++;
+            }
         } break;
         default: break;
     }
@@ -52,24 +62,37 @@ int getCurrentIndex(EntitiesIterator *it) {
 
 void iteratorNext(EntitiesIterator *it) {
     if (!iteratorReachedEnd(it)) {
+        it->currentIndex++;
         switch (it->type) {
             case BULLETS_AT_SHIP:
             {
-                for (; it->currentIndex < it->size && it->entities[it->currentIndex].state != ACTIVE && it->entities[it->currentIndex].up; ++it->currentIndex);
+                while (!iteratorReachedEnd(it) && (getCurrentEntity(it)->state != ACTIVE || getCurrentEntity(it)->up)) {
+                    it->currentIndex++;
+                }
             } break;
             case BULLETS_AT_ENEMIES:
             {
-                for (; it->currentIndex < it->size && it->entities[it->currentIndex].state != ACTIVE && !it->entities[it->currentIndex].up; ++it->currentIndex);
+                while (!iteratorReachedEnd(it) && (getCurrentEntity(it)->state != ACTIVE || !getCurrentEntity(it)->up)) {
+                    it->currentIndex++;
+                }
             } break;
             case BULLETS:
             case ALIENS:
             case POWERUPS:
             {
-                for (; it->currentIndex < it->size && it->entities[it->currentIndex].state != ACTIVE; ++it->currentIndex);
+                while (!iteratorReachedEnd(it) && getCurrentEntity(it)->state != ACTIVE) {
+                    it->currentIndex++;
+                }
             } break;
             default: break;
         }
     }
+}
+
+Entity *getCurrentEntity(EntitiesIterator *it) {
+    if (iteratorReachedEnd(it)) return NULL;
+    int index = getCurrentIndex(it);
+    return &it->entities[index];
 }
 
 CollisionIterator createCollisionIterator(
@@ -82,7 +105,7 @@ CollisionIterator createCollisionIterator(
 }
 
 bool collisionIteratorReachedEnd(CollisionIterator *it) {
-    return (iteratorReachedEnd(&it->aliens) && iteratorReachedEnd(&it->bullets));
+    return (iteratorReachedEnd(&it->bullets) || iteratorReachedEnd(&it->aliens));
 }
 
 bool checkPairCollision(
@@ -91,20 +114,28 @@ bool checkPairCollision(
     *bulletIdx = getCurrentIndex(&it->bullets);
     *alienIdx  = getCurrentIndex(&it->aliens);
 
-    return checkCollisionRecs(it->bullets.entities[*bulletIdx].bounds, it->aliens.entities[*alienIdx].bounds);
+    if (bulletIdx != NULL && alienIdx != NULL) {
+        return CheckCollisionRecs(it->bullets.entities[*bulletIdx].bounds, it->aliens.entities[*alienIdx].bounds);
+    }
+    return false;
 }
 
 void collisionIteratorNext(CollisionIterator *it) {
-    if (!iteratorReachedEnd(&it->bullets)) {
-        if (iteratorReachedEnd(&it->aliens)) {
-            resetIterator(&it->aliens);
+    Entity *currentBullet = getCurrentEntity(&it->bullets);
+    Entity *currentAlien  = getCurrentEntity(&it->aliens);
+    if (currentBullet != NULL && currentAlien != NULL) {
+        if (getCurrentEntity(&it->bullets)->state == INACTIVE && getCurrentEntity(&it->aliens)->state == DEAD)  {
             iteratorNext(&it->bullets);
+            resetIterator(&it->aliens);
         } else {
             iteratorNext(&it->aliens);
+            if (!iteratorReachedEnd(&it->bullets) && iteratorReachedEnd(&it->aliens)) {
+                resetIterator(&it->aliens);
+                iteratorNext(&it->bullets);
+            }
         }
     }
 }
-
 
 Entity createPlayerShip() {
     const float height = 72.0f;
@@ -203,15 +234,14 @@ void destroyBullets(Entity **bullets) {
 }
 
 Entity *createPowerupsArray(int n) {
-    const float height = 32.0f;
-    const float width = 4.0f;
+    const float height = 25.0f;
 
     Entity *powerups = (Entity *)malloc(n * sizeof(Entity));
 
     for (int i = 0; i < n; ++i) {
         // The position and the direction of the bullet will be setted in the activation.
         powerups[i] = (Entity) {
-            .bounds = {.height = height, .width = width},
+            .bounds = {.height = height, .width = height},
             .type   = BULLET,
             .state  = INACTIVE,
         };
@@ -225,25 +255,40 @@ void destroyPowerups(Entity **powerups) {
     *powerups = NULL;
 }
 
-void generateBullet(Entity *bullets, Vector2 position, bool up, int n) {
+void generateBullet(Rectangle *shooterBounds, Entity *bullets, bool up, int n) {
     int i;
-    for (i = 0; i < n || bullets[i].state == ACTIVE; ++i);
+    for (i = 0; i < n && bullets[i].state == ACTIVE; ++i);
+    if (i < n) {
+        Vector2 position = {
+            .x = shooterBounds->x + (shooterBounds->width - bullets[i].bounds.width) / 2.0f,
+            .y = shooterBounds->y
+        };
 
-    bullets[i].bounds.x = position.x;
-    bullets[i].bounds.y = position.y;
-    bullets[i].up       = up;
-    bullets[i].state    = ACTIVE;
+        if (up) position.y -= bullets[i].bounds.height;
+        else position.y += shooterBounds->height;
+
+        bullets[i].bounds.x = position.x;
+        bullets[i].bounds.y = position.y;
+        bullets[i].up       = up;
+        bullets[i].state    = ACTIVE;
+    }
 }
 
-void generatePowerup(Entity *powerups, Vector2 position, int n) {
+void generatePowerup(Rectangle *bounds, Entity *powerups, int n) {
     int i;
-    for (i = 0; i < n || powerups[i].state == ACTIVE; ++i);
+    for (i = 0; i < n && powerups[i].state == ACTIVE; ++i);
+    if (i < n) {
+        Vector2 position = {
+            .x = bounds->x + (bounds->width - powerups[i].bounds.width) / 2.0f,
+            .y = bounds->y + bounds->height
+        };
 
-    powerups[i].bounds.x = position.x;
-    powerups[i].bounds.y = position.y;
-    powerups[i].up       = false;
-    powerups[i].state    = ACTIVE;
-
-    if ((rand() % 100) < 50) powerups[i].type = FAST_MOVE;
-    else powerups[i].type = FAST_SHOT;
+        powerups[i].bounds.x = position.x;
+        powerups[i].bounds.y = position.y;
+        powerups[i].up       = false;
+        powerups[i].state    = ACTIVE;
+    
+        if ((rand() % 100) < 50) powerups[i].type = FAST_MOVE;
+        else powerups[i].type = FAST_SHOT;
+    }
 }

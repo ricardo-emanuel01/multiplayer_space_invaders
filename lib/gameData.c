@@ -1,3 +1,4 @@
+# include <stdlib.h>
 # include <raylib.h>
 # include <string.h>
 
@@ -14,7 +15,6 @@ ColdGameData *initColdGameData() {
     gameData = (ColdGameData *)malloc(sizeof(ColdGameData));
     *gameData = (ColdGameData){
         .enemyShipDelayToFire = 0.25f,
-        .enemyShipSpeed       = 450.0f,
         .projectileSpeed      = 600.0f,
         .powerupDuration      = 2.0f,
         .hordeSpeedIncrease   = 25.0f,
@@ -44,14 +44,15 @@ HotGameData *initHotGameData() {
     HotGameData *
     gameData = (HotGameData *)malloc(sizeof(HotGameData));
     *gameData = (HotGameData){
-        .lastFrameTime               = GetTime(),
-        .hordeSpeed                  = 100.0f,
-        .gameState                   = PAUSED,
-        .menuButton                  = START,
-        .enemyShipGoingLeft          = true,
-        .shipLastShotTime            = 0.0,
-        .remainingTimeEnemyShipAlarm = 4.0f,
-        .enemyShipLastShotTime       = 0.0f,
+        .hordeSpeed                   = 100.0f,
+        .enemyShipSpeed               = -450.0f,
+        .gameState                    = MENU,
+        .menuButton                   = START,
+        .remainingTimeEnemyShipAlarm  = 4.0f,
+        .remainingTimeFastMove        = 0.0,
+        .remainingTimeFastShot        = 0.0,
+        .remainingTimeShipToFire      = 0.0,
+        .remainingTimeEnemyShipToFire = 0.0,
     };
 
     return gameData;
@@ -129,7 +130,7 @@ Animation *initAnimation() {
         .enemyShipFrame = {.height = 10.0f, .width = 16.0f, .x = 0.0f, .y = 0.0f},
         .powerupFrame   = {.height = 18.0f, .width = 18.0f, .x = 0.0f, .y = 0.0f},
         .timeRemainingToChangeFrame = 0.1f,
-        .enemyCurrentFrame          = 0,
+        .alienCurrentFrame          = 0,
     };
 
     return animation;
@@ -158,6 +159,8 @@ void initGame(Game *game) {
         .nPowerups      = nProjectiles,
         .enemiesAlive   = 1 + nRowsAliens*nColsAliens,
         .hordeLastAlive = nRowsAliens*nColsAliens - 1,
+        .screenHeight   = 1080.0f,
+        .screenWidth    = 1920.0f
     };
 
     game->sounds->background.looping = true;
@@ -182,5 +185,5 @@ void cleanupGame(Game *game) {
 void rebootGame(Game *game) {
     cleanupGame(game);
     initGame(game);
-    game->hotData->gameState = CONNECTING;
+    game->hotData->gameState = PLAYING;
 }

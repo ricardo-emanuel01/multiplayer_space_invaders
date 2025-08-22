@@ -2,6 +2,7 @@
 # define _ENTITY_H_
 
 # include <raylib.h>
+# include <stdint.h>
 
 # define nRowsAliens 5
 # define nColsAliens 11
@@ -42,8 +43,8 @@ typedef struct Entity {
         Used for the player to know how to update bullets (and powerups),
         if it's true the entity is going up and down otherwise.
     */
-    bool up;
     EntityState state;
+    bool up;
 } Entity;
 
 typedef struct EntitiesIterator {
@@ -64,6 +65,7 @@ void resetIterator(EntitiesIterator *it);
 bool iteratorReachedEnd(EntitiesIterator *it);
 int getCurrentIndex(EntitiesIterator *it);
 void iteratorNext(EntitiesIterator *it);
+Entity *getCurrentEntity(EntitiesIterator *it);
 
 CollisionIterator createCollisionIterator(Entity *bullets, Entity *horde, uint16_t sizeBullets, uint16_t sizeHorde);
 bool collisionIteratorReachedEnd(CollisionIterator *it);
@@ -79,7 +81,9 @@ Entity *createBulletsArray(int n);
 void destroyBullets(Entity **bullets);
 Entity *createPowerupsArray(int n);
 void destroyPowerups(Entity **powerups);
-void generateBullet(Entity *bullets, Vector2 position, bool up, int n);
-void generatePowerup(Entity *powerups, Vector2 position, int n);
+void generateBullet(Rectangle *shooterBounds, Entity *bullets, bool up, int n);
+
+// The name of the Rectangle variable can improve
+void generatePowerup(Rectangle *bounds, Entity *powerups, int n);
 
 # endif
