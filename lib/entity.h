@@ -72,8 +72,7 @@ bool collisionIteratorReachedEnd(CollisionIterator *it);
 bool checkPairCollision(CollisionIterator *it, int *bulletIdx, int *alienIdx);
 void collisionIteratorNext(CollisionIterator *it);
 
-
-Entity createPlayerShip();
+Entity *createPlayerShips();
 Entity createEnemyShip();
 Entity *createHorde();
 void destroyHorde(Entity **horde);

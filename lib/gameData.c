@@ -13,7 +13,7 @@ ColdGameData *initColdGameData() {
 
     ColdGameData *
     gameData = (ColdGameData *)malloc(sizeof(ColdGameData));
-    *gameData = (ColdGameData){
+    *gameData = (ColdGameData) {
         .enemyShipDelayToFire = 0.25f,
         .projectileSpeed      = 600.0f,
         .powerupDuration      = 2.0f,
@@ -48,11 +48,16 @@ HotGameData *initHotGameData() {
         .enemyShipSpeed               = -450.0f,
         .gameState                    = MENU,
         .menuButton                   = START,
-        .remainingTimeEnemyShipAlarm  = 4.0f,
-        .remainingTimeFastMove        = 0.0,
-        .remainingTimeFastShot        = 0.0,
-        .remainingTimeShipToFire      = 0.0,
-        .remainingTimeEnemyShipToFire = 0.0,
+        .input                        = (Input *)calloc(2, sizeof(Input)),
+        .shipsTimers = {
+            .remainingTimeFastMove = {0.0f, 0.0f},
+            .remainingTimeFastShot = {0.0f, 0.0f},
+            .remainingTimeToFire   = {0.0f, 0.0f}
+        },
+        .enemyShipTimers = {
+            .remainingTimeAlarm  = 4.0f,
+            .remainingTimeToFire = 0.0f
+        }
     };
 
     return gameData;
@@ -142,22 +147,23 @@ void cleanupAnimation(Animation **animation) {
 }
 
 void initGame(Game *game) {
-    uint16_t nProjectiles = 1000;
+    uint16_t nPowerups = 20;
+    uint16_t nBullets  = 40;
     *game = (Game) {
-        .ship           = createPlayerShip(),
+        .ships          = createPlayerShips(),
         .enemyShip      = createEnemyShip(),
         .horde          = createHorde(),
-        .bullets        = createBulletsArray(nProjectiles),
-        .powerups       = createPowerupsArray(nProjectiles),
+        .bullets        = createBulletsArray(nBullets),
+        .powerups       = createPowerupsArray(nPowerups),
         .coldData       = initColdGameData(),
         .hotData        = initHotGameData(),
         .sounds         = initSounds(),
         .textures       = initTextures(),
         .animation      = initAnimation(),
-        .hordeLastAlive = nRowsAliens * nColsAliens - 1,
-        .nBullets       = nProjectiles,
-        .nPowerups      = nProjectiles,
-        .enemiesAlive   = 1 + nRowsAliens*nColsAliens,
+        .nBullets       = nBullets,
+        .nPowerups      = nPowerups,
+        // plus 1 from the enemy ship
+        .enemiesAlive   = nRowsAliens*nColsAliens + 1,
         .hordeLastAlive = nRowsAliens*nColsAliens - 1,
         .screenHeight   = 1080.0f,
         .screenWidth    = 1920.0f
@@ -165,7 +171,6 @@ void initGame(Game *game) {
 
     game->sounds->background.looping = true;
     game->sounds->enemyShip.looping = true;
-    PlayMusicStream(game->sounds->background);
 }
 
 void cleanupGame(Game *game) {
@@ -176,8 +181,10 @@ void cleanupGame(Game *game) {
     destroyBullets(&game->bullets);
     destroyPowerups(&game->powerups);
 
+    free(game->hotData->input);
     free(game->hotData);
     free(game->coldData);
+    free(game->ships);
     game->hotData = NULL;
     game->coldData = NULL;
 }
@@ -186,4 +193,76 @@ void rebootGame(Game *game) {
     cleanupGame(game);
     initGame(game);
     game->hotData->gameState = PLAYING;
+}
+
+void buildSnapshot(Game *game, SnapshotGameState *snap) {
+    snap->gameState = game->hotData->gameState;
+    snap->menuButton = game->hotData->menuButton;
+
+    memset(&snap->entities, 0, N_ENTITIES * sizeof(EntityBounds));
+    int j = 0;
+    for (int i = 0; i < 55; ++i) {
+        if (game->horde[i].state == ACTIVE) {
+            snap->entities[j++] = (EntityBounds) {
+                .x = htons((uint16_t)game->horde[i].bounds.x),
+                .y = htons((uint16_t)game->horde[i].bounds.y)
+            };
+        } else j++;
+    }
+
+    if (game->enemyShip.state == ACTIVE) {
+        snap->entities[j++] = (EntityBounds) {
+            .x = htons((uint16_t)game->enemyShip.bounds.x),
+            .y = htons((uint16_t)game->enemyShip.bounds.y)
+        };
+    } else j++;
+
+    if (game->ships[0].state == ACTIVE) {
+        snap->entities[j++] = (EntityBounds) {
+            .x = htons((uint16_t)game->ships[0].bounds.x),
+            .y = htons((uint16_t)game->ships[0].bounds.y)
+        };
+    } else j++;
+
+    if (game->ships[1].state == ACTIVE) {
+        snap->entities[j++] = (EntityBounds) {
+            .x = htons((uint16_t)game->ships[1].bounds.x),
+            .y = htons((uint16_t)game->ships[1].bounds.y)
+        };
+    } else j++;
+
+    for (int i = 0; i < game->nPowerups; ++i) {
+        if (game->powerups[i].state == ACTIVE) {
+            snap->entities[j++] = (EntityBounds) {
+                .x = htons((uint16_t)game->powerups[i].bounds.x),
+                .y = htons((uint16_t)game->powerups[i].bounds.y)
+            };
+        } else j++;
+    }
+
+    for (int i = 0; i < game->nBullets; ++i) {
+        if (game->bullets[i].state == ACTIVE) {
+            snap->entities[j++] = (EntityBounds) {
+                .x = htons((uint16_t)game->bullets[i].bounds.x),
+                .y = htons((uint16_t)game->bullets[i].bounds.y)
+            };
+        } else j++;
+    }
+}
+
+Player2CommandsBuf *initCommandsBuf(int capacity) {
+    Player2CommandsBuf *commands = (Player2CommandsBuf *)malloc(sizeof(Player2CommandsBuf));
+    *commands = (Player2CommandsBuf) {
+        .capacity = capacity,
+        .size = 0,
+        .input = (Input *)malloc(capacity * sizeof(Input))
+    };
+
+    return commands;
+}
+
+void cleanupCommandsBuf(Player2CommandsBuf **buf) {
+    free((*buf)->input);
+    free(*buf);
+    *buf = NULL;
 }

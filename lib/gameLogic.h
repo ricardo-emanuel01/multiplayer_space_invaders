@@ -2,7 +2,7 @@
 # define _GAME_LOGIC_H_
 
 
-# include "gameData.h"
+typedef struct Game Game;
 
 void processInput(Input *input);
 void updateGame(Game *game, float deltaTime);

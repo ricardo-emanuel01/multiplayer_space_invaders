@@ -7,6 +7,6 @@
 # include "render.h"
 
 
-void mainLoop();
+int mainLoop(const char *argc);
 
 # endif

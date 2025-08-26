@@ -137,24 +137,36 @@ void collisionIteratorNext(CollisionIterator *it) {
     }
 }
 
-Entity createPlayerShip() {
+Entity *createPlayerShips() {
     const float height = 72.0f;
     const float width = 96.0f;
     const float x = 912.0f;
     const float y = 900.0f;
 
-    Entity ship = {
+    Entity *ships = (Entity *)malloc(2 * sizeof(Entity));
+    ships[0] = (Entity) {
         .bounds = {
             .height = height,
             .width  = width,
-            .x      = x,
-            .y      = y,
+            .x      = x - width,
+            .y      = y
         },
-        .type  = SHIP,
         .state = ACTIVE,
+        .type  = SHIP
     };
 
-    return ship;
+    ships[1] = (Entity) {
+        .bounds = {
+            .height = height,
+            .width  = width,
+            .x      = x + width,
+            .y      = y
+        },
+        .state = ACTIVE,
+        .type  = SHIP
+    };
+
+    return ships;
 }
 
 
@@ -242,7 +254,6 @@ Entity *createPowerupsArray(int n) {
         // The position and the direction of the bullet will be setted in the activation.
         powerups[i] = (Entity) {
             .bounds = {.height = height, .width = height},
-            .type   = BULLET,
             .state  = INACTIVE,
         };
     }
@@ -275,20 +286,38 @@ void generateBullet(Rectangle *shooterBounds, Entity *bullets, bool up, int n) {
 }
 
 void generatePowerup(Rectangle *bounds, Entity *powerups, int n) {
-    int i;
-    for (i = 0; i < n && powerups[i].state == ACTIVE; ++i);
-    if (i < n) {
+    int newPowerupIdx = 0;
+    EntityType powerupType;
+    if ((rand() % 100) < 50) powerupType = FAST_MOVE;
+    else powerupType = FAST_SHOT;
+
+    // TODO: eliminate the magic numbers
+    if (powerupType == FAST_MOVE) {
+        for (int i = 0; i < 10; ++i) {
+            if (powerups[i].state != ACTIVE) {
+                newPowerupIdx = i;
+                break;
+            }
+        }
+    } else {
+        for (int i = 10; i < 20; ++i) {
+            if (powerups[i].state != ACTIVE) {
+                newPowerupIdx = i;
+                break;
+            }
+        }
+    }
+
+    if (newPowerupIdx < n) {
         Vector2 position = {
-            .x = bounds->x + (bounds->width - powerups[i].bounds.width) / 2.0f,
+            .x = bounds->x + (bounds->width - powerups[newPowerupIdx].bounds.width) / 2.0f,
             .y = bounds->y + bounds->height
         };
 
-        powerups[i].bounds.x = position.x;
-        powerups[i].bounds.y = position.y;
-        powerups[i].up       = false;
-        powerups[i].state    = ACTIVE;
-    
-        if ((rand() % 100) < 50) powerups[i].type = FAST_MOVE;
-        else powerups[i].type = FAST_SHOT;
+        powerups[newPowerupIdx].bounds.x = position.x;
+        powerups[newPowerupIdx].bounds.y = position.y;
+        powerups[newPowerupIdx].up       = false;
+        powerups[newPowerupIdx].state    = ACTIVE;
+        powerups[newPowerupIdx].type     = powerupType;
     }
 }

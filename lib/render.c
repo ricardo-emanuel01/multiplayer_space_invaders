@@ -1,5 +1,6 @@
-# include <stdint.h>
+# include <arpa/inet.h>
 # include <raylib.h>
+# include <stdint.h>
 # include <string.h>
 
 # include "entity.h"
@@ -187,7 +188,8 @@ void drawGame(Game *game) {
     ClearBackground(BLACK);
     DrawFPS(10, 10);
 
-    drawEntity(game, &game->ship);
+    drawEntity(game, &game->ships[0]);
+    drawEntity(game, &game->ships[1]);
     drawEntity(game, &game->enemyShip);
     
     EntitiesIterator hordeIt = createIterator(
@@ -219,5 +221,135 @@ void drawGame(Game *game) {
 
     if (game->hotData->gameState == CONNECTING) {
         drawConnectingScreen();
+    }
+}
+
+void drawEntityNetwork(Game *game, EntityBounds bounds, EntityType type) {
+    Vector2 origin = {0.0f, 0.0f};
+    Texture2D currentTex;
+    Rectangle srcRectangle, dstRectangle;
+    switch (type) {
+        case SHIP:
+        {
+            currentTex = game->textures->ship;
+            srcRectangle = game->animation->shipFrame;
+            dstRectangle = (Rectangle) {
+                .height = game->ships[0].bounds.height,
+                .width  = game->ships[0].bounds.width,
+                .x      = (float)ntohs(bounds.x),
+                .y      = (float)ntohs(bounds.y)
+            };
+        } break;
+        case ENEMY_SHIP:
+        {
+            currentTex = game->textures->enemyShip;
+            srcRectangle = game->animation->enemyShipFrame;
+            dstRectangle = (Rectangle) {
+                .height = game->enemyShip.bounds.height,
+                .width  = game->enemyShip.bounds.width,
+                .x      = (float)ntohs(bounds.x),
+                .y      = (float)ntohs(bounds.y)
+            };
+        } break;
+        case ALIEN1:
+        {
+            currentTex = game->textures->alien1;
+            srcRectangle = game->animation->aliensFrame;
+            dstRectangle = (Rectangle) {
+                .height = game->horde[0].bounds.height,
+                .width  = game->horde[0].bounds.width,
+                .x      = (float)ntohs(bounds.x),
+                .y      = (float)ntohs(bounds.y)
+            };
+        } break;
+        case ALIEN2:
+        {
+            currentTex = game->textures->alien2;
+            srcRectangle = game->animation->aliensFrame;
+            dstRectangle = (Rectangle) {
+                .height = game->horde[0].bounds.height,
+                .width  = game->horde[0].bounds.width,
+                .x      = (float)ntohs(bounds.x),
+                .y      = (float)ntohs(bounds.y)
+            };
+        } break;
+        case ALIEN3:
+        {
+            currentTex = game->textures->alien3;
+            srcRectangle = game->animation->aliensFrame;
+            dstRectangle = (Rectangle) {
+                .height = game->horde[0].bounds.height,
+                .width  = game->horde[0].bounds.width,
+                .x      = (float)ntohs(bounds.x),
+                .y      = (float)ntohs(bounds.y)
+            };
+        } break;
+        case BULLET:
+        {
+            currentTex = game->textures->bullet;
+            srcRectangle = game->animation->bulletFrame;
+            dstRectangle = (Rectangle) {
+                .height = game->bullets[0].bounds.height,
+                .width  = game->bullets[0].bounds.width,
+                .x      = (float)ntohs(bounds.x),
+                .y      = (float)ntohs(bounds.y)
+            };
+        } break;
+        case FAST_MOVE:
+        {
+            currentTex = game->textures->movePowerup;
+            srcRectangle = game->animation->powerupFrame;
+            dstRectangle = (Rectangle) {
+                .height = game->powerups[0].bounds.height,
+                .width  = game->powerups[0].bounds.width,
+                .x      = (float)ntohs(bounds.x),
+                .y      = (float)ntohs(bounds.y)
+            };
+        } break;
+        case FAST_SHOT:
+        {
+            currentTex = game->textures->shotPowerup;
+            srcRectangle = game->animation->powerupFrame;
+            dstRectangle = (Rectangle) {
+                .height = game->powerups[0].bounds.height,
+                .width  = game->powerups[0].bounds.width,
+                .x      = (float)ntohs(bounds.x),
+                .y      = (float)ntohs(bounds.y)
+            };
+        } break;
+        default: break;
+    }
+
+    DrawTexturePro(
+        currentTex, srcRectangle, dstRectangle, origin, 0.0f, WHITE
+    );
+}
+
+EntityType getEntityType(int index) {
+    if (index < 22) return ALIEN1;
+    if (index < 33) return ALIEN2;
+    if (index < 55) return ALIEN3;
+    if (index < 56) return ENEMY_SHIP;
+    if (index < 58) return SHIP;
+    if (index < 68) return FAST_MOVE;
+    if (index < 78) return FAST_SHOT;
+    if (index < 118) return BULLET;
+}
+
+void drawSnapshot(Game *game, SnapshotGameState *snap) {
+    EntityType currentType;
+    ClearBackground(BLACK);
+    for (int i = 0; i < N_ENTITIES; ++i) {
+        if (snap->entities[i].x != 0 || snap->entities[i].y != 0) {
+            drawEntityNetwork(game, snap->entities[i], getEntityType(i));
+        }
+    }
+
+    if (game->hotData->gameState != PLAYING) {
+        drawMenu(game);
+    }
+
+    if (game->hotData->gameState == WIN || game->hotData->gameState == LOSE) {
+        drawEndStatus(game);
     }
 }

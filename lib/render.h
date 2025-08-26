@@ -4,6 +4,8 @@
 # include <raylib.h>
 
 
+typedef struct SnapshotGameState SnapshotGameState;
+
 typedef enum VerticalAlignment {
     TOP,
     MIDDLE,
@@ -13,5 +15,6 @@ typedef enum VerticalAlignment {
 typedef struct Game Game;
 
 void drawGame(Game *game);
+void drawSnapshot(Game *game, SnapshotGameState *);
 
 # endif
