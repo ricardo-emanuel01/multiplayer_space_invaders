@@ -148,8 +148,6 @@ int mainLoop(const char *player) {
     InitAudioDevice();
     initGame(&game);
     SetExitKey(KEY_NULL);
-    // SetTargetFPS(60);
-    // DisableCursor();
 
     // Initialize game loop
     if (strcmp(player, "host") == 0) {

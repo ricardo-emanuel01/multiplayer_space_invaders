@@ -9,6 +9,7 @@
 # include "render.h"
 
 # define Input uint8_t
+# define SoundEvents uint16_t
 # define N_ENTITIES 118
 
 typedef enum GameState {
@@ -41,6 +42,12 @@ typedef struct Player2CommandsBuf {
     int capacity;
     int size;
 } Player2CommandsBuf;
+
+typedef struct SoundEventsBuf {
+    SoundEvents *soundEvents;
+    int capacity;
+    int size;
+} SoundEventsBuf;
 
 typedef struct Remote {
     int remote_fd;
@@ -140,22 +147,23 @@ typedef struct Animation {
 } Animation;
 
 typedef struct Game {
-    Entity        enemyShip;
-    int           screenHeight;
-    Entity*       ships;
-    Entity*       horde;
-    Entity*       bullets;
-    Entity*       powerups;
-    ColdGameData* coldData;
-    HotGameData*  hotData;
-    Sounds*       sounds;
-    Textures*     textures;
-    Animation*    animation;
-    int           screenWidth;
-    uint16_t      nBullets;
-    uint16_t      nPowerups;
-    uint16_t      enemiesAlive;
-    uint8_t       hordeLastAlive;
+    Entity          enemyShip;
+    int             screenHeight;
+    Entity*         ships;
+    Entity*         horde;
+    Entity*         bullets;
+    Entity*         powerups;
+    ColdGameData*   coldData;
+    HotGameData*    hotData;
+    Sounds*         sounds;
+    Textures*       textures;
+    Animation*      animation;
+    SoundEventsBuf* soundEventsBuf;
+    int             screenWidth;
+    uint16_t        nBullets;
+    uint16_t        nPowerups;
+    uint16_t        enemiesAlive;
+    uint8_t         hordeLastAlive;
 } Game;
 
 void initGame(Game *game);
@@ -164,5 +172,7 @@ void cleanupGame(Game *game);
 void buildSnapshot(Game *game, SnapshotGameState *);
 Player2CommandsBuf *initCommandsBuf(int capacity);
 void cleanupCommandsBuf(Player2CommandsBuf **buf);
+SoundEventsBuf *initSoundEventsBuf(int capactiy);
+void cleanupSoundEventsBuf(SoundEventsBuf **buf);
 
 # endif

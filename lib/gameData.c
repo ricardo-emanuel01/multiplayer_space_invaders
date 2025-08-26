@@ -166,7 +166,8 @@ void initGame(Game *game) {
         .enemiesAlive   = nRowsAliens*nColsAliens + 1,
         .hordeLastAlive = nRowsAliens*nColsAliens - 1,
         .screenHeight   = 1080.0f,
-        .screenWidth    = 1920.0f
+        .screenWidth    = 1920.0f,
+        .soundEventsBuf = initSoundEventsBuf(3),
     };
 
     game->sounds->background.looping = true;
@@ -177,6 +178,7 @@ void cleanupGame(Game *game) {
     cleanupSounds(&game->sounds);
     cleanupTextures(&game->textures);
     cleanupAnimation(&game->animation);
+    cleanupSoundEventsBuf(&game->soundEventsBuf);
     destroyHorde(&game->horde);
     destroyBullets(&game->bullets);
     destroyPowerups(&game->powerups);
@@ -264,5 +266,20 @@ Player2CommandsBuf *initCommandsBuf(int capacity) {
 void cleanupCommandsBuf(Player2CommandsBuf **buf) {
     free((*buf)->input);
     free(*buf);
+    *buf = NULL;
+}
+
+SoundEventsBuf *initSoundEventsBuf(int capacity) {
+    SoundEventsBuf *buf = (SoundEventsBuf *)malloc(sizeof(SoundEventsBuf));
+    buf->soundEvents = (SoundEvents *)malloc(capacity * sizeof(SoundEvents));
+    buf->size = 0;
+    buf->capacity = capacity;
+
+    return buf;
+}
+
+void cleanupSoundEventsBuf(SoundEventsBuf **buf) {
+    free((*buf)->soundEvents);
+    free((*buf));
     *buf = NULL;
 }
