@@ -82,6 +82,8 @@ void remoteLoop(
     if (now - *lastProcTick >= PROC_TICK_DURATION) {
         int currentCommand = commandsBuf->size;
         processInput(&commandsBuf->input[currentCommand]);
+        processMusic(game, snap);
+        processSoundFX(game, snap);
         BeginDrawing();
             drawSnapshot(game, snap);
         EndDrawing();
@@ -92,8 +94,6 @@ void remoteLoop(
     }
 
     if (now - *lastCommTick >= COMM_TICK_DURATION) {
-        buildSnapshot(game, snap);
-
         int bytesSent = 0;
         while (bytesSent < sizeof(Input)) {
             int n = send(remote->remote_fd, ((char *)&commandsBuf->input[0]) + bytesSent, sizeof(Input) - bytesSent, 0);
@@ -120,8 +120,8 @@ void remoteLoop(
         }
 
         commandsBuf->size = 0;
-        game->hotData->menuButton = snap->menuButton;
-        game->hotData->gameState = snap->gameState;
+        game->hotData->menuButton = ntohl(snap->menuButton);
+        game->hotData->gameState = ntohl(snap->gameState);
         *lastCommTick += COMM_TICK_DURATION;
     }
 }
@@ -130,7 +130,7 @@ int mainLoop(const char *player) {
     Game game;
     Host host;
     Remote remote;
-    SnapshotGameState snap;
+    SnapshotGameState snap = {0};
     double lastCommTick;
     double lastProcTick;
 

@@ -1,16 +1,18 @@
-# ifndef _GAME_DATA_H_
-# define _GAME_DATA_H_
+#ifndef _GAME_DATA_H_
+#define _GAME_DATA_H_
 
-# include <arpa/inet.h>
-# include <raylib.h>
-# include <stdint.h>
+#include <arpa/inet.h>
+#include <raylib.h>
+#include <stdint.h>
 
-# include "entity.h"
-# include "render.h"
+#include "entity.h"
+#include "render.h"
 
-# define Input uint8_t
-# define SoundEvents uint16_t
-# define N_ENTITIES 118
+#define Input uint8_t
+#define SoundEvents uint8_t
+#define MusicEvents uint8_t
+#define N_ENTITIES 118
+#define CAP_SOUND_EVENT_BUF 3
 
 typedef enum GameState {
     CONNECTING,
@@ -37,6 +39,24 @@ typedef enum ScreenLimit {
     RIGHT,
 } ScreenLimit;
 
+typedef enum SoundSelect {
+    ALIEN_EXPLOSION_FX = 0,
+    ALIEN_FIRE_FX,
+    LOSE_FX,
+    MENU_FX,
+    POWERUP_FX,
+    SHIP_EXPLOSION_FX,
+    SHIP_FIRE_FX,
+    VICTORY_FX,
+} SoundSelect;
+
+typedef enum MusicSelect {
+    PLAY_BACKGROUND_MUSIC,
+    STOP_BACKGROUND_MUSIC,
+    PLAY_ENEMY_SHIP_MUSIC,
+    STOP_ENEMY_SHIP_MUSIC,
+} MusicSelect;
+
 typedef struct Player2CommandsBuf {
     Input *input;
     int capacity;
@@ -45,8 +65,7 @@ typedef struct Player2CommandsBuf {
 
 typedef struct SoundEventsBuf {
     SoundEvents *soundEvents;
-    int capacity;
-    int size;
+    int currentIdx;
 } SoundEventsBuf;
 
 typedef struct Remote {
@@ -74,6 +93,8 @@ typedef struct SnapshotGameState {
     EntityBounds entities[N_ENTITIES];
     GameState gameState;
     MenuButton menuButton;
+    SoundEvents soundEvents[CAP_SOUND_EVENT_BUF];
+    MusicEvents musicEvents;
 } SnapshotGameState;
 
 typedef struct ColdGameData {
@@ -164,6 +185,7 @@ typedef struct Game {
     uint16_t        nPowerups;
     uint16_t        enemiesAlive;
     uint8_t         hordeLastAlive;
+    MusicEvents     musicEvents;
 } Game;
 
 void initGame(Game *game);
@@ -172,7 +194,8 @@ void cleanupGame(Game *game);
 void buildSnapshot(Game *game, SnapshotGameState *);
 Player2CommandsBuf *initCommandsBuf(int capacity);
 void cleanupCommandsBuf(Player2CommandsBuf **buf);
-SoundEventsBuf *initSoundEventsBuf(int capactiy);
+SoundEventsBuf *initSoundEventsBuf(int capacity);
 void cleanupSoundEventsBuf(SoundEventsBuf **buf);
+void addSound(SoundEventsBuf *, SoundSelect);
 
-# endif
+#endif

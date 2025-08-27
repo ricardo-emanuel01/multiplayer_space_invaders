@@ -6,5 +6,7 @@ typedef struct Game Game;
 
 void processInput(Input *input);
 void updateGame(Game *game, float deltaTime);
+void processMusic(Game *, SnapshotGameState *);
+void processSoundFX(Game *, SnapshotGameState *);
 
 # endif

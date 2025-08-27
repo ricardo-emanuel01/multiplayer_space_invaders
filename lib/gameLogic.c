@@ -8,6 +8,73 @@
 # include "gameLogic.h"
 
 
+// NOTE: How to deal with that naming issue??
+// The index will be incremented at each frame
+void playSoundFX(Game *game, SoundSelect sound) {
+    switch (sound) {
+        case ALIEN_EXPLOSION_FX:
+        {
+            PlaySound(game->sounds->alienExplosion);
+        } break;
+        case ALIEN_FIRE_FX:
+        {
+            PlaySound(game->sounds->alienFire);
+        } break;
+        case LOSE_FX:
+        {
+            PlaySound(game->sounds->lose);
+        } break;
+        case MENU_FX:
+        {
+            PlaySound(game->sounds->menu);
+        } break;
+        case POWERUP_FX:
+        {
+            PlaySound(game->sounds->powerup);
+        } break;
+        case SHIP_EXPLOSION_FX:
+        {
+            PlaySound(game->sounds->shipExplosion);
+        } break;
+        case SHIP_FIRE_FX:
+        {
+            PlaySound(game->sounds->shipFire);
+        } break;
+        case VICTORY_FX:
+        {
+            PlaySound(game->sounds->victory);
+        } break;
+        default: return;
+    }
+
+    addSound(game->soundEventsBuf, sound);
+}
+
+void manageMusic(Game *game, MusicSelect music) {
+    switch (music) {
+        case PLAY_BACKGROUND_MUSIC:
+        {
+            PlayMusicStream(game->sounds->background);
+            game->musicEvents |= 1;
+        } break;
+        case STOP_BACKGROUND_MUSIC:
+        {
+            StopMusicStream(game->sounds->background);
+            game->musicEvents &= ~1;
+        } break;
+        case PLAY_ENEMY_SHIP_MUSIC:
+        {
+            PlayMusicStream(game->sounds->enemyShip);
+            game->musicEvents |= 1 << 1;
+        } break;
+        case STOP_ENEMY_SHIP_MUSIC:
+        {
+            StopMusicStream(game->sounds->enemyShip);
+            game->musicEvents &= ~(1 << 1);
+        } break;
+    }
+}
+
 void processInput(Input *input) {
     input[0] = 0;
 
@@ -73,8 +140,9 @@ void processInput(Input *input) {
 void loseGame(Game *game) {
     game->ships[0].state = DEAD;
     game->hotData->gameState = LOSE;
-    StopMusicStream(game->sounds->background);
-    PlaySound(game->sounds->lose);
+    manageMusic(game, STOP_BACKGROUND_MUSIC);
+    manageMusic(game, STOP_ENEMY_SHIP_MUSIC);
+    playSoundFX(game, LOSE_FX);
 }
 
 void activatePowerup(Game *game, Entity *powerup, int shipNumber) {
@@ -131,7 +199,7 @@ void checkAlienBulletCollision(Game *game) {
             game->bullets[bulletIdx].state = INACTIVE;
             game->horde[alienIdx].state    = DEAD;
             game->enemiesAlive--;
-            PlaySound(game->sounds->alienExplosion);
+            playSoundFX(game, ALIEN_EXPLOSION_FX);
             if (rand() % 100 < dropCheck) {
                 generatePowerup(&game->horde[alienIdx].bounds, game->powerups, game->nPowerups);
             }
@@ -154,7 +222,7 @@ void checkShipBulletCollision(Game *game) {
         if (CheckCollisionRecs(currBullet->bounds, game->ships[0].bounds)) {
             currBullet->state = INACTIVE;
             game->ships[0].state = DEAD;
-            PlaySound(game->sounds->shipExplosion);
+            playSoundFX(game, SHIP_EXPLOSION_FX);
             break;
         }
 
@@ -167,7 +235,7 @@ void checkShipBulletCollision(Game *game) {
         if (CheckCollisionRecs(currBullet->bounds, game->ships[1].bounds)) {
             currBullet ->state = INACTIVE;
             game->ships[1].state = DEAD;
-            PlaySound(game->sounds->shipExplosion);
+            playSoundFX(game, SHIP_EXPLOSION_FX);
             break;
         }
 
@@ -189,7 +257,7 @@ void checkEnemyShipBulletCollision(Game *game) {
                 game->enemyShip.state = DEAD;
                 game->bullets->state  = INACTIVE;
                 game->enemiesAlive--;
-                PlaySound(game->sounds->shipExplosion);
+                playSoundFX(game, SHIP_EXPLOSION_FX);
             }
     
             iteratorNext(&it);
@@ -212,7 +280,7 @@ void fire(Game* game, Entity *entity, int shipNumber) {
             ShipsTimers *shipsTimers         = &game->hotData->shipsTimers;
             if (shipsTimers->remainingTimeToFire[shipNumber] <= 0.0) {
                 generateBullet(&entity->bounds, game->bullets, true, game->nBullets);
-                PlaySound(game->sounds->shipFire);
+                playSoundFX(game, SHIP_FIRE_FX);
                 if (shipsTimers->remainingTimeFastShot[shipNumber] > 0.0) {
                     shipsTimers->remainingTimeToFire[shipNumber] = game->coldData->shipDelaysToFire[BUFFED];
                 } else {
@@ -224,7 +292,7 @@ void fire(Game* game, Entity *entity, int shipNumber) {
         {
             EnemyShipTimers *enemyShipTimers = &game->hotData->enemyShipTimers;
             generateBullet(&entity->bounds, game->bullets, false, game->nBullets);
-            PlaySound(game->sounds->shipFire);
+            playSoundFX(game, SHIP_FIRE_FX);
             enemyShipTimers->remainingTimeToFire = game->coldData->enemyShipDelayToFire;
         } break;
         case ALIEN1:
@@ -232,7 +300,7 @@ void fire(Game* game, Entity *entity, int shipNumber) {
         case ALIEN3:
         {
             generateBullet(&entity->bounds, game->bullets, false, game->nBullets);
-            PlaySound(game->sounds->alienFire);
+            playSoundFX(game, ALIEN_FIRE_FX);
         } break;
         default: break;
     }
@@ -281,6 +349,7 @@ void updateEnemyShip(Game *game, float deltaTime) {
         enemyShipTimers->remainingTimeAlarm -= deltaTime;
         if (enemyShipTimers->remainingTimeAlarm <= 0.0f) {
             game->enemyShip.state = ACTIVE;
+            manageMusic(game, PLAY_ENEMY_SHIP_MUSIC);
         }
     } else if (game->enemyShip.state == ACTIVE) {
         enemyShipTimers->remainingTimeToFire -= deltaTime;
@@ -295,7 +364,7 @@ void updateEnemyShip(Game *game, float deltaTime) {
             if (game->enemyShip.bounds.x > game->screenWidth) {
                 game->enemyShip.state = INACTIVE;
                 game->hotData->enemyShipSpeed *= -1;
-                StopMusicStream(game->sounds->enemyShip);
+                manageMusic(game, STOP_ENEMY_SHIP_MUSIC);
                 enemyShipTimers->remainingTimeAlarm = game->coldData->enemyShipSleepTime;
             }
         } else if (game->hotData->enemyShipSpeed < 0.0f) {
@@ -430,7 +499,7 @@ void updateMenu(Game *game) {
                 } else if (game->hotData->menuButton == QUIT) {
                     game->hotData->menuButton = START;
                 }
-                PlaySound(game->sounds->menu);
+                playSoundFX(game, MENU_FX);
             } break;
             // TODO: check all possible cases
             default: break;
@@ -439,6 +508,8 @@ void updateMenu(Game *game) {
 }
 
 void updateGame(Game *game, float deltaTime) {
+    game->soundEventsBuf->soundEvents[game->soundEventsBuf->currentIdx] = 0;
+
     switch (game->hotData->gameState) {
         case PLAYING:
         {
@@ -456,8 +527,8 @@ void updateGame(Game *game, float deltaTime) {
 
             if (game->enemiesAlive <= 0) {
                 game->hotData->gameState = WIN;
-                StopMusicStream(game->sounds->background);
-                PlaySound(game->sounds->victory);
+                manageMusic(game, STOP_BACKGROUND_MUSIC);
+                playSoundFX(game, VICTORY_FX);
             }
         } break;
         case MENU:
@@ -468,7 +539,7 @@ void updateGame(Game *game, float deltaTime) {
             if (game->hotData->input[0] & (1 << 5)) {
                 if (game->hotData->menuButton == START) {
                     game->hotData->gameState = PLAYING;
-                    PlayMusicStream(game->sounds->background);
+                    manageMusic(game, PLAY_BACKGROUND_MUSIC);
                 } else {
                     game->hotData->gameState = CLOSE;
                 }
@@ -488,5 +559,68 @@ void updateGame(Game *game, float deltaTime) {
         } break;
         // TODO: check all cases
         default: break;
+    }
+
+    game->soundEventsBuf->currentIdx = (game->soundEventsBuf->currentIdx + 1) % CAP_SOUND_EVENT_BUF;
+}
+
+void processMusic(Game *game, SnapshotGameState *snap) {
+    UpdateMusicStream(game->sounds->background);
+    UpdateMusicStream(game->sounds->enemyShip);
+
+    if ((snap->musicEvents & 1) && !IsMusicStreamPlaying(game->sounds->background)) {
+        PlayMusicStream(game->sounds->background);
+    }
+
+    if (!(snap->musicEvents & 1) && IsMusicStreamPlaying(game->sounds->background)) {
+        StopMusicStream(game->sounds->background);
+    }
+
+    if ((snap->musicEvents & (1 << 1)) && !IsMusicStreamPlaying(game->sounds->enemyShip)) {
+        PlayMusicStream(game->sounds->enemyShip);
+    }
+
+    if (!(snap->musicEvents & (1 << 1)) && IsMusicStreamPlaying(game->sounds->enemyShip)) {
+        StopMusicStream(game->sounds->enemyShip);
+    }
+
+    snap->musicEvents = 0;
+}
+
+void processSoundFX(Game *game, SnapshotGameState *snap) {
+    for (int i = 0; i < CAP_SOUND_EVENT_BUF; ++i) {
+        if (snap->soundEvents[i] & 1) {
+            PlaySound(game->sounds->alienExplosion);
+        }
+
+        if (snap->soundEvents[i] & (1 << 1)) {
+            PlaySound(game->sounds->alienFire);
+        }
+
+        if (snap->soundEvents[i] & (1 << 2)) {
+            PlaySound(game->sounds->lose);
+        }
+
+        if (snap->soundEvents[i] & (1 << 3)) {
+            PlaySound(game->sounds->menu);
+        }
+
+        if (snap->soundEvents[i] & (1 << 4)) {
+            PlaySound(game->sounds->powerup);
+        }
+
+        if (snap->soundEvents[i] & (1 << 5)) {
+            PlaySound(game->sounds->shipExplosion);
+        }
+
+        if (snap->soundEvents[i] & (1 << 6)) {
+            PlaySound(game->sounds->shipFire);
+        }
+
+        if (snap->soundEvents[i] & (1 << 7)) {
+            PlaySound(game->sounds->victory);
+        }
+
+        snap->soundEvents[i] = 0;
     }
 }

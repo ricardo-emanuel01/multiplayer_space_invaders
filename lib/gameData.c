@@ -1,6 +1,7 @@
 # include <stdlib.h>
 # include <raylib.h>
 # include <string.h>
+# include <stdio.h>
 
 # include "entity.h"
 # include "gameData.h"
@@ -167,7 +168,8 @@ void initGame(Game *game) {
         .hordeLastAlive = nRowsAliens*nColsAliens - 1,
         .screenHeight   = 1080.0f,
         .screenWidth    = 1920.0f,
-        .soundEventsBuf = initSoundEventsBuf(3),
+        .soundEventsBuf = initSoundEventsBuf(CAP_SOUND_EVENT_BUF),
+        .musicEvents    = 0,
     };
 
     game->sounds->background.looping = true;
@@ -198,8 +200,15 @@ void rebootGame(Game *game) {
 }
 
 void buildSnapshot(Game *game, SnapshotGameState *snap) {
-    snap->gameState = game->hotData->gameState;
-    snap->menuButton = game->hotData->menuButton;
+    snap->gameState = htonl(game->hotData->gameState);
+    snap->menuButton = htonl(game->hotData->menuButton);
+    snap->musicEvents = game->musicEvents;
+
+    memcpy(
+        &snap->soundEvents,
+        game->soundEventsBuf->soundEvents,
+        CAP_SOUND_EVENT_BUF * sizeof(SoundEvents)
+    );
 
     memset(&snap->entities, 0, N_ENTITIES * sizeof(EntityBounds));
     int j = 0;
@@ -271,9 +280,8 @@ void cleanupCommandsBuf(Player2CommandsBuf **buf) {
 
 SoundEventsBuf *initSoundEventsBuf(int capacity) {
     SoundEventsBuf *buf = (SoundEventsBuf *)malloc(sizeof(SoundEventsBuf));
-    buf->soundEvents = (SoundEvents *)malloc(capacity * sizeof(SoundEvents));
-    buf->size = 0;
-    buf->capacity = capacity;
+    buf->soundEvents = (SoundEvents *)calloc(capacity, sizeof(SoundEvents));
+    buf->currentIdx = 0;
 
     return buf;
 }
@@ -282,4 +290,10 @@ void cleanupSoundEventsBuf(SoundEventsBuf **buf) {
     free((*buf)->soundEvents);
     free((*buf));
     *buf = NULL;
+}
+
+void addSound(SoundEventsBuf *buf, SoundSelect sound) {
+    if (buf->currentIdx < CAP_SOUND_EVENT_BUF) {
+        buf->soundEvents[buf->currentIdx] |= 1 << sound;
+    }
 }
