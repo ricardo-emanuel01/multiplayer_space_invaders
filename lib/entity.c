@@ -1,9 +1,8 @@
-# include <raylib.h>
-# include <stdlib.h>
+#include "entity.h"
 
-# include <raylib.h>
-# include <stdint.h>
-# include "entity.h"
+#include <raylib.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 
 EntitiesIterator createIterator(
@@ -169,6 +168,10 @@ Entity *createPlayerShips() {
     return ships;
 }
 
+void destroyPlayerShips(Entity **ships) {
+    free(*ships);
+    *ships = NULL;
+}
 
 Entity createEnemyShip() {
     const float height = 40.0f;

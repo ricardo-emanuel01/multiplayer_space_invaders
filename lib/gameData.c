@@ -1,10 +1,10 @@
-# include <stdlib.h>
-# include <raylib.h>
-# include <string.h>
-# include <stdio.h>
+#include "gameData.h"
 
-# include "entity.h"
-# include "gameData.h"
+#include <raylib.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "entity.h"
 
 
 ColdGameData *initColdGameData() {
@@ -49,7 +49,6 @@ HotGameData *initHotGameData() {
         .enemyShipSpeed               = -450.0f,
         .gameState                    = MENU,
         .menuButton                   = START,
-        .input                        = (Input *)calloc(2, sizeof(Input)),
         .shipsTimers = {
             .remainingTimeFastMove = {0.0f, 0.0f},
             .remainingTimeFastShot = {0.0f, 0.0f},
@@ -181,11 +180,11 @@ void cleanupGame(Game *game) {
     cleanupTextures(&game->textures);
     cleanupAnimation(&game->animation);
     cleanupSoundEventsBuf(&game->soundEventsBuf);
+    destroyPlayerShips(&game->ships);
     destroyHorde(&game->horde);
     destroyBullets(&game->bullets);
     destroyPowerups(&game->powerups);
 
-    free(game->hotData->input);
     free(game->hotData);
     free(game->coldData);
     free(game->ships);
@@ -261,18 +260,18 @@ void buildSnapshot(Game *game, SnapshotGameState *snap) {
     }
 }
 
-Player2CommandsBuf *initCommandsBuf(int capacity) {
-    Player2CommandsBuf *commands = (Player2CommandsBuf *)malloc(sizeof(Player2CommandsBuf));
-    *commands = (Player2CommandsBuf) {
+CommandsBufPlayer2 *initCommandsBuf(int capacity) {
+    CommandsBufPlayer2 *commands = (CommandsBufPlayer2 *)malloc(sizeof(CommandsBufPlayer2));
+    *commands = (CommandsBufPlayer2) {
         .capacity = capacity,
         .size = 0,
-        .input = (Input *)malloc(capacity * sizeof(Input))
+        .input = (Input *)calloc(capacity, sizeof(Input))
     };
 
     return commands;
 }
 
-void cleanupCommandsBuf(Player2CommandsBuf **buf) {
+void cleanupCommandsBuf(CommandsBufPlayer2 **buf) {
     free((*buf)->input);
     free(*buf);
     *buf = NULL;

@@ -1,7 +1,7 @@
-# ifndef _RENDER_H_
-# define _RENDER_H_
+#ifndef _RENDER_H_
+#define _RENDER_H_
 
-# include <raylib.h>
+#include <raylib.h>
 
 
 typedef struct SnapshotGameState SnapshotGameState;
@@ -17,4 +17,4 @@ typedef struct Game Game;
 void drawGame(Game *game);
 void drawSnapshot(Game *game, SnapshotGameState *);
 
-# endif
+#endif

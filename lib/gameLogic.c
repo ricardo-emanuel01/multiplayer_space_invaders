@@ -1,11 +1,12 @@
-# include <stdint.h>
-# include <stdlib.h>
-# include <stdio.h>
-# include <raylib.h>
+#include "gameLogic.h"
 
-# include "entity.h"
-# include "gameData.h"
-# include "gameLogic.h"
+#include <raylib.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "entity.h"
+#include "gameData.h"
 
 
 // NOTE: How to deal with that naming issue??
@@ -76,7 +77,7 @@ void manageMusic(Game *game, MusicSelect music) {
 }
 
 void processInput(Input *input) {
-    input[0] = 0;
+    *input = 0;
 
     float stickX = 0.0f;
     const float stickDeadzone = 0.1f;
@@ -91,49 +92,49 @@ void processInput(Input *input) {
         IsKeyPressed(KEY_UP) ||
         (gamepadAvailable && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP))
     ) {
-        input[0] |= 1;
+        *input |= 1;
     }
 
     if (
         IsKeyPressed(KEY_DOWN) ||
         (gamepadAvailable && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN))
     ) {
-        input[0] |= 1 << 1;
+        *input |= 1 << 1;
     }
 
     if (
         IsKeyDown(KEY_LEFT) ||
         stickX < 0.0f
     ) {
-        input[0] |= 1 << 2;
+        *input |= 1 << 2;
     }
 
     if (
         IsKeyDown(KEY_RIGHT) ||
         stickX > 0.0f
     ) {
-        input[0] |= 1 << 3;
+        *input |= 1 << 3;
     }
 
     if (
         IsKeyPressed(KEY_SPACE) ||
         (gamepadAvailable && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
     ) {
-        input[0] |= 1 << 4;
+        *input |= 1 << 4;
     }
 
     if (
         IsKeyPressed(KEY_ENTER) ||
         (gamepadAvailable && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))
     ) {
-        input[0] |= 1 << 5;
+        *input |= 1 << 5;
     }
 
     if (
         IsKeyPressed(KEY_ESCAPE) ||
         (gamepadAvailable && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT))
     ) {
-        input[0] |= 1 << 6;
+        *input |= 1 << 6;
     }
 }
 
@@ -214,27 +215,14 @@ void checkAlienBulletCollision(Game *game) {
     }
 }
 
-void checkShipBulletCollision(Game *game) {
+void checkShipBulletCollision(Game *game, int shipNumber) {
     EntitiesIterator it = createIterator(game->bullets, BULLETS_AT_SHIP, game->nBullets);
 
-    while (game->ships[0].state == ACTIVE && !iteratorReachedEnd(&it)) {
+    while (game->ships[shipNumber].state == ACTIVE && !iteratorReachedEnd(&it)) {
         Entity *currBullet = getCurrentEntity(&it);
-        if (CheckCollisionRecs(currBullet->bounds, game->ships[0].bounds)) {
+        if (CheckCollisionRecs(currBullet->bounds, game->ships[shipNumber].bounds)) {
             currBullet->state = INACTIVE;
-            game->ships[0].state = DEAD;
-            playSoundFX(game, SHIP_EXPLOSION_FX);
-            break;
-        }
-
-        iteratorNext(&it);
-    }
-
-    resetIterator(&it);
-    while (game->ships[1].state == ACTIVE && !iteratorReachedEnd(&it)) {
-        Entity *currBullet = getCurrentEntity(&it);
-        if (CheckCollisionRecs(currBullet->bounds, game->ships[1].bounds)) {
-            currBullet ->state = INACTIVE;
-            game->ships[1].state = DEAD;
+            game->ships[shipNumber].state = DEAD;
             playSoundFX(game, SHIP_EXPLOSION_FX);
             break;
         }
@@ -268,16 +256,16 @@ void checkEnemyShipBulletCollision(Game *game) {
 void checkCollisions(Game *game) {
     checkAlienBulletCollision(game);
     checkEnemyShipBulletCollision(game);
-    checkShipBulletCollision(game);
+    checkShipBulletCollision(game, 0);
+    checkShipBulletCollision(game, 1);
     checkShipPowerupCollision(game);
 }
 
-// TODO: solve the need of a shipNumber integer
 void fire(Game* game, Entity *entity, int shipNumber) {
     switch (entity->type) {
         case SHIP:
         {
-            ShipsTimers *shipsTimers         = &game->hotData->shipsTimers;
+            ShipsTimers *shipsTimers = &game->hotData->shipsTimers;
             if (shipsTimers->remainingTimeToFire[shipNumber] <= 0.0) {
                 generateBullet(&entity->bounds, game->bullets, true, game->nBullets);
                 playSoundFX(game, SHIP_FIRE_FX);
@@ -306,16 +294,16 @@ void fire(Game* game, Entity *entity, int shipNumber) {
     }
 }
 
-void updateShip(Game *game, float deltaTime, int shipNumber) {
+void updateShip(Game *game, Input *input, float deltaTime, int shipNumber) {
     if (game->ships[shipNumber].state != ACTIVE) return;
 
     ShipsTimers *shipsTimers = &game->hotData->shipsTimers;
 
-    shipsTimers->remainingTimeFastMove[shipNumber]   -= deltaTime;
-    shipsTimers->remainingTimeFastShot[shipNumber]   -= deltaTime;
-    shipsTimers->remainingTimeToFire[shipNumber]     -= deltaTime;
+    // shipsTimers->remainingTimeFastMove[shipNumber]   -= deltaTime;
+    // shipsTimers->remainingTimeFastShot[shipNumber]   -= deltaTime;
+    // shipsTimers->remainingTimeToFire[shipNumber]     -= deltaTime;
 
-    if (game->hotData->input[shipNumber] & (1 << 2)) {
+    if ((*input) & (1 << 2)) {
         if (shipsTimers->remainingTimeFastMove[shipNumber] > 0.0) {
             game->ships[shipNumber].bounds.x -= game->coldData->shipSpeeds[BUFFED] * deltaTime;
         } else {
@@ -323,7 +311,7 @@ void updateShip(Game *game, float deltaTime, int shipNumber) {
         }
     }
 
-    if (game->hotData->input[shipNumber] & (1 << 3)) {
+    if ((*input) & (1 << 3)) {
         if (shipsTimers->remainingTimeFastMove[shipNumber] > 0.0) {
             game->ships[shipNumber].bounds.x += game->coldData->shipSpeeds[BUFFED] * deltaTime;
         } else {
@@ -334,13 +322,15 @@ void updateShip(Game *game, float deltaTime, int shipNumber) {
     if (game->ships[shipNumber].bounds.x <= game->coldData->screenLimits[LEFT]) {
         game->ships[shipNumber].bounds.x = game->coldData->screenLimits[LEFT];
     }
-    if (game->ships[shipNumber].bounds.x + game->ships[shipNumber].bounds.width >= game->coldData->screenLimits[RIGHT]) {
+    if (game->ships[shipNumber].bounds.x + game->ships[0].bounds.width >= game->coldData->screenLimits[RIGHT]) {
         game->ships[shipNumber].bounds.x = game->coldData->screenLimits[RIGHT] - game->ships[shipNumber].bounds.width;
     }
 
-    if (game->hotData->input[shipNumber] & (1 << 4)) {
+    if ((*input) & (1 << 4)) {
         fire(game, &game->ships[shipNumber], shipNumber);
     }
+
+    *input = 0;
 }
 
 void updateEnemyShip(Game *game, float deltaTime) {
@@ -486,8 +476,8 @@ void updateProjectiles(Game *game, float deltaTime) {
 }
 
 void updateMenu(Game *game) {
-    Input *input = &game->hotData->input[0];
-    if (((*input) & 1) || ((*input) & (1 << 1))) {
+    Input input = game->hotData->input;
+    if ((input & 1) || (input & (1 << 1))) {
         switch (game->hotData->gameState) {
             case MENU:
             case PAUSED:
@@ -507,20 +497,37 @@ void updateMenu(Game *game) {
     }
 }
 
-void updateGame(Game *game, float deltaTime) {
+void updatePlayer2(Game *game, CommandsBufPlayer2 *commands, float delta) {
+    for (int i = 0; i < commands->capacity; ++i) {
+        updateShip(game, &commands->input[i], delta, 1);
+        checkShipBulletCollision(game, 1);
+    }
+}
+
+void updateGame(Game *game, CommandsBufPlayer2 *commandsPlayer2, float deltaTime) {
     game->soundEventsBuf->soundEvents[game->soundEventsBuf->currentIdx] = 0;
 
     switch (game->hotData->gameState) {
         case PLAYING:
         {
             UpdateMusicStream(game->sounds->background);
+            // TODO: Find a better approach
+            ShipsTimers *shipsTimers = &game->hotData->shipsTimers;
 
-            if (game->hotData->input[0] & (1 << 6)) {
+            shipsTimers->remainingTimeFastMove[0]   -= deltaTime;
+            shipsTimers->remainingTimeFastShot[0]   -= deltaTime;
+            shipsTimers->remainingTimeToFire[0]     -= deltaTime;
+            shipsTimers->remainingTimeFastMove[1]   -= deltaTime;
+            shipsTimers->remainingTimeFastShot[1]   -= deltaTime;
+            shipsTimers->remainingTimeToFire[1]     -= deltaTime;
+
+            if (game->hotData->input & (1 << 6)) {
                 game->hotData->gameState = PAUSED;
             }
             checkCollisions(game);
-            updateShip(game, deltaTime, 0);
-            updateShip(game, deltaTime, 1);
+            updateShip(game, &game->hotData->input, deltaTime, 0);
+            updatePlayer2(game, commandsPlayer2, deltaTime);
+            // updateShip(game, deltaTime);
             updateEnemyShip(game, deltaTime);
             updateHorde(game, deltaTime);
             updateProjectiles(game, deltaTime);
@@ -536,7 +543,7 @@ void updateGame(Game *game, float deltaTime) {
         {
             UpdateMusicStream(game->sounds->background);
             updateMenu(game);
-            if (game->hotData->input[0] & (1 << 5)) {
+            if (game->hotData->input & (1 << 5)) {
                 if (game->hotData->menuButton == START) {
                     game->hotData->gameState = PLAYING;
                     manageMusic(game, PLAY_BACKGROUND_MUSIC);
@@ -549,7 +556,7 @@ void updateGame(Game *game, float deltaTime) {
         case LOSE:
         {
             updateMenu(game);
-            if (game->hotData->input[0] & (1 << 5)) {
+            if (game->hotData->input & (1 << 5)) {
                 if (game->hotData->menuButton == START) {
                     rebootGame(game);
                 } else {

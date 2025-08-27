@@ -57,11 +57,11 @@ typedef enum MusicSelect {
     STOP_ENEMY_SHIP_MUSIC,
 } MusicSelect;
 
-typedef struct Player2CommandsBuf {
+typedef struct CommandsBufPlayer2 {
     Input *input;
     int capacity;
     int size;
-} Player2CommandsBuf;
+} CommandsBufPlayer2;
 
 typedef struct SoundEventsBuf {
     SoundEvents *soundEvents;
@@ -85,6 +85,7 @@ typedef struct EntityBounds {
     uint16_t x, y;
 } EntityBounds;
 
+// TODO: send or predict the frame of the aliens
 typedef struct SnapshotGameState {
     /**
      * 22 alien1s, 11 alien2s, 22 alien 3s, 1 enemy ship, 2 players,
@@ -124,13 +125,13 @@ typedef struct EnemyShipTimers {
 typedef struct HotGameData {
     ShipsTimers     shipsTimers;
     EnemyShipTimers enemyShipTimers;
-    Input*          input;
     float           enemyShipSpeed;
     float           hordeSpeed;
     GameState       gameState;
     MenuButton      menuButton;
     // TODO: Revisit that name and logic
     bool            hordeDown;
+    Input           input;
 } HotGameData;
 
 typedef struct Sounds {
@@ -192,8 +193,8 @@ void initGame(Game *game);
 void rebootGame(Game* game);
 void cleanupGame(Game *game);
 void buildSnapshot(Game *game, SnapshotGameState *);
-Player2CommandsBuf *initCommandsBuf(int capacity);
-void cleanupCommandsBuf(Player2CommandsBuf **buf);
+CommandsBufPlayer2 *initCommandsBuf(int capacity);
+void cleanupCommandsBuf(CommandsBufPlayer2 **buf);
 SoundEventsBuf *initSoundEventsBuf(int capacity);
 void cleanupSoundEventsBuf(SoundEventsBuf **buf);
 void addSound(SoundEventsBuf *, SoundSelect);

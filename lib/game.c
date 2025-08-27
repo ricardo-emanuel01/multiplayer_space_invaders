@@ -1,18 +1,21 @@
-# include <stdio.h>
-# include <string.h>
-# include <sys/time.h>
-# include <unistd.h>
-# include "game.h"
-# include "gameData.h"
-# include "gameLogic.h"
-# include "host.h"
-# include "remote.h"
-# include "render.h"
+#include "game.h"
+
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/time.h>
+#include <unistd.h>
+
+#include "gameData.h"
+#include "gameLogic.h"
+#include "host.h"
+#include "remote.h"
+#include "render.h"
 
 
-# define PROC_TICK_DURATION 0.016f
-# define COMM_TICK_DURATION 0.0083f
-# define PORT 2112
+#define PROC_TICK_DURATION 0.016f
+#define COMM_TICK_DURATION 0.016f
+#define PORT 2112
 
 
 double getTimeSecs() {
@@ -26,46 +29,62 @@ void hostLoop(
     SnapshotGameState *snap,
     Host *host,
     double *lastProcTick,
-    double *lastCommTick
+    double *lastCommTick,
+    CommandsBufPlayer2 *commandsPlayer2
 ) {
     double now = getTimeSecs();
 
     // TODO: Apply rollback
     if (now - *lastProcTick >= PROC_TICK_DURATION) {
-        processInput(game->hotData->input);
-        updateGame(game, PROC_TICK_DURATION);
+        processInput(&game->hotData->input);
+        updateGame(game, commandsPlayer2, now - *lastProcTick);
         BeginDrawing();
             drawGame(game);
         EndDrawing();
 
-        *lastProcTick += PROC_TICK_DURATION;
+        *lastProcTick = now;
     }
 
     if (now - *lastCommTick >= COMM_TICK_DURATION) {
         buildSnapshot(game, snap);
 
         int bytesRecvd = 0;
-        while (bytesRecvd < sizeof(Input)) {
-            int n = recv(host->remote_fd, ((char *)&game->hotData->input[1] + bytesRecvd), sizeof(Input) - bytesRecvd, 0);
-            if (n < 0) {
-                perror("error receiving remote host input.\n");
-                return;
+        while (bytesRecvd < commandsPlayer2->capacity * sizeof(Input)) {
+            int n = recv(
+                host->remote_fd,
+                ((char *)commandsPlayer2->input + bytesRecvd),
+                commandsPlayer2->capacity * sizeof(Input) - bytesRecvd,
+                0
+            );
+            if (n > 0) {
+                bytesRecvd += n;
+            } else if (n == 0) {
+                // Disconnection
+                game->hotData->gameState = CLOSE;
+                break;
+            } else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                // NO DATA AVAILABLE
+                break;
+            } else {
+                perror("failed to recv data.\n");
+                break;
             }
-            bytesRecvd += n;
         }
 
         int bytesSent = 0;
         while (bytesSent < sizeof(SnapshotGameState)) {
             int n = send(host->remote_fd, ((char *)snap) + bytesSent, sizeof(SnapshotGameState) - bytesSent, 0);
-            if (n < 0) {
+            if (n > 0) {
+                bytesSent += n;
+            } else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                break;
+            } else {
                 perror("error sending game snapshot.\n");
-                return;
+                break;
             }
-
-            bytesSent += n;
         }
 
-        *lastCommTick += COMM_TICK_DURATION;
+        *lastCommTick = now;
     }
 }
 
@@ -75,7 +94,7 @@ void remoteLoop(
     Remote *remote,
     double *lastProcTick,
     double *lastCommTick,
-    Player2CommandsBuf *commandsBuf
+    CommandsBufPlayer2 *commandsBuf
 ) {
     double now = getTimeSecs();
 
@@ -88,41 +107,50 @@ void remoteLoop(
             drawSnapshot(game, snap);
         EndDrawing();
 
-        // Will apply only with the rollback
-        // commandsBuf->size++;
-        *lastProcTick += PROC_TICK_DURATION;
+        *lastProcTick = now;
     }
 
     if (now - *lastCommTick >= COMM_TICK_DURATION) {
         int bytesSent = 0;
-        while (bytesSent < sizeof(Input)) {
-            int n = send(remote->remote_fd, ((char *)&commandsBuf->input[0]) + bytesSent, sizeof(Input) - bytesSent, 0);
-            if (n < 0) {
-                perror("error sending remote input.\n");
-                game->hotData->gameState = CLOSE;
-                return;
+        while (bytesSent < sizeof(Input) * commandsBuf->capacity) {
+            int n = send(
+                remote->remote_fd,
+                ((char *)commandsBuf->input) + bytesSent,
+                sizeof(Input) * commandsBuf->capacity - bytesSent,
+                0
+            );
+            if (n > 0) {
+                bytesSent += n;
+            } else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                break;
+            } else {
+                perror("failed to send.\n");
+                break;
             }
-            bytesSent += n;
         }
 
         int bytesRecvd = 0;
         while (bytesRecvd < sizeof(SnapshotGameState)) {
             int n = recv(remote->remote_fd, ((char *)snap) + bytesRecvd, sizeof(SnapshotGameState) - bytesRecvd, 0);
-            if (n < 0) {
-                perror("error receiving snapshot.\n");
-                return;
+            if (n > 0) {
+                bytesRecvd += n;
             } else if (n == 0) {
-                // TODO: manage disconnection
+                // Disconnection
                 game->hotData->gameState = CLOSE;
-                return;
+                break;
+            } else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                // NO DATA AVAILABLE
+                break;
+            } else {
+                perror("failed to recv data.\n");
+                break;
             }
-            bytesRecvd += n;
         }
 
         commandsBuf->size = 0;
         game->hotData->menuButton = ntohl(snap->menuButton);
         game->hotData->gameState = ntohl(snap->gameState);
-        *lastCommTick += COMM_TICK_DURATION;
+        *lastCommTick = now;
     }
 }
 
@@ -151,6 +179,7 @@ int mainLoop(const char *player) {
 
     // Initialize game loop
     if (strcmp(player, "host") == 0) {
+        CommandsBufPlayer2 *commandsPlayer2 = initCommandsBuf((int)(COMM_TICK_DURATION/PROC_TICK_DURATION));
         lastCommTick = lastProcTick = getTimeSecs();
         while (game.hotData->gameState != CLOSE) {
             hostLoop(
@@ -158,14 +187,16 @@ int mainLoop(const char *player) {
                 &snap,
                 &host,
                 &lastProcTick,
-                &lastCommTick
+                &lastCommTick,
+                commandsPlayer2
             );
         }
 
+        cleanupCommandsBuf(&commandsPlayer2);
         close(host.host_fd);
         close(host.remote_fd);
     } else if (strcmp(player, "remote") == 0) {
-        Player2CommandsBuf *commands = initCommandsBuf((int)(COMM_TICK_DURATION/PROC_TICK_DURATION));
+        CommandsBufPlayer2 *commands = initCommandsBuf((int)(COMM_TICK_DURATION/PROC_TICK_DURATION));
         lastCommTick = lastProcTick = getTimeSecs();
         while (game.hotData->gameState != CLOSE) {
             remoteLoop(
@@ -176,6 +207,10 @@ int mainLoop(const char *player) {
                 &lastCommTick,
                 commands
             );
+
+            // Will apply only with the rollback
+            commands->size++;
+            commands->size %= commands->capacity;
         }
 
         close(remote.remote_fd);

@@ -1,11 +1,13 @@
-# include <netinet/tcp.h>
-# include <stdio.h>
-# include <stdlib.h>
-# include <string.h>
-# include <stdbool.h>
-# include <unistd.h>
-# include "gameData.h"
-# include "host.h"
+#include "host.h"
+
+#include <fcntl.h>
+#include <netinet/tcp.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include "gameData.h"
 
 
 int initHostTCP(Host *host, uint16_t port) {
@@ -51,13 +53,14 @@ int acceptConnectionTCP(Host *host) {
         return -1;
     }
 
-    // int flags = fcntl(host->host_fd, F_GETFL, 0);
-    // int result = fcntl(host->host_fd, F_SETFL, flags | O_NONBLOCK);
-    // if (result < 0) {
-    //     perror("failed to set socket operations non-blocking.\n");
-    //     close(host->host_fd);
-    //     return -2;
-    // }
+    int flags = fcntl(host->remote_fd, F_GETFL, 0);
+    int result = fcntl(host->remote_fd, F_SETFL, flags | O_NONBLOCK);
+    if (result < 0) {
+        perror("failed to set socket operations non-blocking.\n");
+        close(host->host_fd);
+        close(host->remote_fd);
+        return -2;
+    }
 
     printf("connected...\n");
     return 0;

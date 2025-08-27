@@ -1,11 +1,11 @@
-# ifndef _ENTITY_H_
-# define _ENTITY_H_
+#ifndef _ENTITY_H_
+#define _ENTITY_H_
 
-# include <raylib.h>
-# include <stdint.h>
+#include <raylib.h>
+#include <stdint.h>
 
-# define nRowsAliens 5
-# define nColsAliens 11
+#define nRowsAliens 5
+#define nColsAliens 11
 
 
 typedef enum EntityType {
@@ -73,6 +73,7 @@ bool checkPairCollision(CollisionIterator *it, int *bulletIdx, int *alienIdx);
 void collisionIteratorNext(CollisionIterator *it);
 
 Entity *createPlayerShips();
+void destroyPlayerShips(Entity **ships);
 Entity createEnemyShip();
 Entity *createHorde();
 void destroyHorde(Entity **horde);
@@ -85,4 +86,4 @@ void generateBullet(Rectangle *shooterBounds, Entity *bullets, bool up, int n);
 // The name of the Rectangle variable can improve
 void generatePowerup(Rectangle *bounds, Entity *powerups, int n);
 
-# endif
+#endif

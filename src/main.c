@@ -1,4 +1,4 @@
-# include "../lib/game.h"
+#include "../lib/game.h"
 
 
 int main(int argc, char *argv[]) {

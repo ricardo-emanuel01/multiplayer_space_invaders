@@ -1,11 +1,12 @@
-# include <arpa/inet.h>
-# include <raylib.h>
-# include <stdint.h>
-# include <string.h>
+#include "render.h"
 
-# include "entity.h"
-# include "gameData.h"
-# include "render.h"
+#include <arpa/inet.h>
+#include <raylib.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "entity.h"
+#include "gameData.h"
 
 
 void drawEntity(Game *game, Entity *entity) {
