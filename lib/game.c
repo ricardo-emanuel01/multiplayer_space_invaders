@@ -72,7 +72,7 @@ void hostLoop(
             return;
         }
 
-        // NOTE: I only want to update that if the communication was a success?
+        // NOTE: I want to update that only if the communication was a success?
         *lastCommTick = now;
     }
 }
