@@ -7,8 +7,6 @@
 typedef struct Host Host;
 
 
-int initHostTCP(Host *host, uint16_t port);
-int acceptConnectionTCP(Host *host);
-void cleanupHostTCP(Host **host);
+int initHostTCP(Host *host, uint16_t hostPort, uint16_t remotePort);
 
 #endif

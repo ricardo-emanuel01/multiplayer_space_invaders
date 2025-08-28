@@ -6,8 +6,6 @@
 
 typedef struct Remote Remote;
 
-int initRemoteTCP(Remote *remote, const char *addr, uint16_t port);
-int connectTCP(Remote *remote);
-void cleanupRemoteTCP(Remote **remote);
+int initRemoteTCP(Remote *remote, uint16_t hostPort, uint16_t remotePort);
 
 #endif

@@ -13,6 +13,8 @@
 #define MusicEvents uint8_t
 #define N_ENTITIES 118
 #define CAP_SOUND_EVENT_BUF 3
+#define HOST_PORT 2112
+#define REMOTE_PORT 2113
 
 typedef enum GameState {
     CONNECTING,
@@ -70,13 +72,14 @@ typedef struct SoundEventsBuf {
 
 typedef struct Remote {
     int remote_fd;
-    struct sockaddr_in host_addr;
+    struct sockaddr_in host_addr, remote_addr;
+    socklen_t host_len;
 } Remote;
 
 typedef struct Host {
-    int host_fd, remote_fd;
+    int host_fd;
     struct sockaddr_in host_addr, remote_addr;
-    socklen_t remote_addr_len;
+    socklen_t remote_len;
 } Host;
 
 // Used to send the remote host the entities to draw

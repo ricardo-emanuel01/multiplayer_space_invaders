@@ -299,9 +299,10 @@ void updateShip(Game *game, Input *input, float deltaTime, int shipNumber) {
 
     ShipsTimers *shipsTimers = &game->hotData->shipsTimers;
 
-    // shipsTimers->remainingTimeFastMove[shipNumber]   -= deltaTime;
-    // shipsTimers->remainingTimeFastShot[shipNumber]   -= deltaTime;
-    // shipsTimers->remainingTimeToFire[shipNumber]     -= deltaTime;
+    // NOTE: that can work if I simulate the projectiles properly
+    shipsTimers->remainingTimeFastMove[shipNumber]   -= deltaTime;
+    shipsTimers->remainingTimeFastShot[shipNumber]   -= deltaTime;
+    shipsTimers->remainingTimeToFire[shipNumber]     -= deltaTime;
 
     if ((*input) & (1 << 2)) {
         if (shipsTimers->remainingTimeFastMove[shipNumber] > 0.0) {
@@ -512,14 +513,14 @@ void updateGame(Game *game, CommandsBufPlayer2 *commandsPlayer2, float deltaTime
         {
             UpdateMusicStream(game->sounds->background);
             // TODO: Find a better approach
-            ShipsTimers *shipsTimers = &game->hotData->shipsTimers;
+            // ShipsTimers *shipsTimers = &game->hotData->shipsTimers;
 
-            shipsTimers->remainingTimeFastMove[0]   -= deltaTime;
-            shipsTimers->remainingTimeFastShot[0]   -= deltaTime;
-            shipsTimers->remainingTimeToFire[0]     -= deltaTime;
-            shipsTimers->remainingTimeFastMove[1]   -= deltaTime;
-            shipsTimers->remainingTimeFastShot[1]   -= deltaTime;
-            shipsTimers->remainingTimeToFire[1]     -= deltaTime;
+            // shipsTimers->remainingTimeFastMove[0]   -= deltaTime;
+            // shipsTimers->remainingTimeFastShot[0]   -= deltaTime;
+            // shipsTimers->remainingTimeToFire[0]     -= deltaTime;
+            // shipsTimers->remainingTimeFastMove[1]   -= deltaTime;
+            // shipsTimers->remainingTimeFastShot[1]   -= deltaTime;
+            // shipsTimers->remainingTimeToFire[1]     -= deltaTime;
 
             if (game->hotData->input & (1 << 6)) {
                 game->hotData->gameState = PAUSED;

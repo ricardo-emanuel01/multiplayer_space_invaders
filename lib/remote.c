@@ -10,35 +10,35 @@
 #include "gameData.h"
 
 
-int initRemoteTCP(Remote *remote, const char *addr, uint16_t port) {
+int initRemoteTCP(Remote *remote, uint16_t hostPort, uint16_t remotePort) {
     *remote = (Remote) {
-        .remote_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP),
+        .remote_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP),
         .host_addr = {
-            .sin_family = AF_INET,
-            .sin_port   = htons(port) 
+            .sin_family      = AF_INET,
+            .sin_port        = htons(hostPort),
+            .sin_addr.s_addr = inet_addr("127.0.0.1")
+        },
+        .remote_addr = {
+            .sin_family      = AF_INET,
+            .sin_port        = htons(remotePort),
+            .sin_addr.s_addr = INADDR_ANY
         }
     };
-    inet_pton(AF_INET, addr, &remote->host_addr.sin_addr);
+    remote->host_len = sizeof(remote->host_addr);
     memset(&remote->host_addr.sin_zero, 0, sizeof(remote->host_addr.sin_zero));
-    int yes = 1;
-    setsockopt(remote->remote_fd, IPPROTO_TCP, TCP_NODELAY, (const void *)&yes, sizeof(yes));
+    memset(&remote->remote_addr.sin_zero, 0, sizeof(remote->remote_addr.sin_zero));
 
     if (remote->remote_fd < 0) {
         perror("failed to create remote socket.\n");
         return -1;
     }
 
-    printf("remote initialized.\n");
-
-    return 0;
-}
-
-int connectTCP(Remote *remote) {
-    if (connect(remote->remote_fd, (struct sockaddr *)&remote->host_addr, sizeof(remote->host_addr)) < 0) {
-        perror("failed to handshake.\n");
+    if (bind(remote->remote_fd, (struct sockaddr *)&remote->remote_addr, sizeof(remote->remote_addr)) < 0) {
+        perror("failed to bind the host socket.\n");
         close(remote->remote_fd);
-        return -1;
+        return -3;
     }
+
     int flags = fcntl(remote->remote_fd, F_GETFL, 0);
     int result = fcntl(remote->remote_fd, F_SETFL, flags | O_NONBLOCK);
     if (result < 0) {
@@ -46,5 +46,8 @@ int connectTCP(Remote *remote) {
         close(remote->remote_fd);
         return -2;
     }
-    printf("connected...\n");
+
+    printf("remote initialized.\n");
+
+    return 0;
 }

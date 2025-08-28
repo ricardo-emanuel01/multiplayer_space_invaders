@@ -15,7 +15,6 @@
 
 #define PROC_TICK_DURATION 0.016f
 #define COMM_TICK_DURATION 0.016f
-#define PORT 2112
 
 
 double getTimeSecs() {
@@ -37,7 +36,7 @@ void hostLoop(
     // TODO: Apply rollback
     if (now - *lastProcTick >= PROC_TICK_DURATION) {
         processInput(&game->hotData->input);
-        updateGame(game, commandsPlayer2, now - *lastProcTick);
+        updateGame(game, commandsPlayer2, PROC_TICK_DURATION);
         BeginDrawing();
             drawGame(game);
         EndDrawing();
@@ -48,39 +47,39 @@ void hostLoop(
     if (now - *lastCommTick >= COMM_TICK_DURATION) {
         buildSnapshot(game, snap);
 
-        int bytesRecvd = 0;
-        while (bytesRecvd < commandsPlayer2->capacity * sizeof(Input)) {
-            int n = recv(
-                host->remote_fd,
-                ((char *)commandsPlayer2->input + bytesRecvd),
-                commandsPlayer2->capacity * sizeof(Input) - bytesRecvd,
-                0
+        if (game->hotData->gameState == PLAYING) {
+            int n = recvfrom(
+                host->host_fd,
+                ((char *)commandsPlayer2->input ),
+                commandsPlayer2->capacity * sizeof(Input),
+                0,
+                (struct sockaddr *)&host->remote_addr,
+                &host->remote_len
             );
-            if (n > 0) {
-                bytesRecvd += n;
-            } else if (n == 0) {
-                // Disconnection
-                game->hotData->gameState = CLOSE;
-                break;
-            } else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-                // NO DATA AVAILABLE
-                break;
-            } else {
-                perror("failed to recv data.\n");
-                break;
+
+            if (n < 0) {
+                if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                    perror("error receiving commands.\n");
+                    game->hotData->gameState = CLOSE;
+                    return;
+                }
             }
         }
 
-        int bytesSent = 0;
-        while (bytesSent < sizeof(SnapshotGameState)) {
-            int n = send(host->remote_fd, ((char *)snap) + bytesSent, sizeof(SnapshotGameState) - bytesSent, 0);
-            if (n > 0) {
-                bytesSent += n;
-            } else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-                break;
-            } else {
-                perror("error sending game snapshot.\n");
-                break;
+        int n = sendto(
+            host->host_fd,
+            (char *)snap,
+            sizeof(SnapshotGameState),
+            0,
+            (struct sockaddr *)&host->remote_addr,
+            host->remote_len
+        );
+        
+        if (n < 0) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                perror("error sending snapshot.\n");
+                game->hotData->gameState = CLOSE;
+                return;
             }
         }
 
@@ -111,39 +110,39 @@ void remoteLoop(
     }
 
     if (now - *lastCommTick >= COMM_TICK_DURATION) {
-        int bytesSent = 0;
-        while (bytesSent < sizeof(Input) * commandsBuf->capacity) {
-            int n = send(
+        if (game->hotData->gameState == PLAYING) {
+            int n = sendto(
                 remote->remote_fd,
-                ((char *)commandsBuf->input) + bytesSent,
-                sizeof(Input) * commandsBuf->capacity - bytesSent,
-                0
+                ((char *)commandsBuf->input),
+                sizeof(Input) * commandsBuf->capacity,
+                0,
+                (struct sockaddr *)&remote->host_addr,
+                remote->host_len
             );
-            if (n > 0) {
-                bytesSent += n;
-            } else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-                break;
-            } else {
-                perror("failed to send.\n");
-                break;
+
+            if (n < 0) {
+                if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                    perror("error sending commands.\n");
+                    game->hotData->gameState = CLOSE;
+                    return;
+                }
             }
         }
 
-        int bytesRecvd = 0;
-        while (bytesRecvd < sizeof(SnapshotGameState)) {
-            int n = recv(remote->remote_fd, ((char *)snap) + bytesRecvd, sizeof(SnapshotGameState) - bytesRecvd, 0);
-            if (n > 0) {
-                bytesRecvd += n;
-            } else if (n == 0) {
-                // Disconnection
+        int n = recvfrom(
+            remote->remote_fd,
+            ((char *)snap),
+            sizeof(SnapshotGameState),
+            0,
+            (struct sockaddr *)&remote->host_addr,
+            &remote->host_len
+        );
+
+        if (n < 0) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                perror("error receiving snapshot.\n");
                 game->hotData->gameState = CLOSE;
-                break;
-            } else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-                // NO DATA AVAILABLE
-                break;
-            } else {
-                perror("failed to recv data.\n");
-                break;
+                return;
             }
         }
 
@@ -164,11 +163,9 @@ int mainLoop(const char *player) {
 
     // Initialize network
     if (strcmp(player, "host") == 0) {
-        initHostTCP(&host, PORT);
-        acceptConnectionTCP(&host);
+        initHostTCP(&host, HOST_PORT, REMOTE_PORT);
     } else if (strcmp(player, "remote") == 0) {
-        initRemoteTCP(&remote, "127.0.0.1", PORT);
-        connectTCP(&remote);
+        initRemoteTCP(&remote, HOST_PORT, REMOTE_PORT);
     }
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);
@@ -194,7 +191,6 @@ int mainLoop(const char *player) {
 
         cleanupCommandsBuf(&commandsPlayer2);
         close(host.host_fd);
-        close(host.remote_fd);
     } else if (strcmp(player, "remote") == 0) {
         CommandsBufPlayer2 *commands = initCommandsBuf((int)(COMM_TICK_DURATION/PROC_TICK_DURATION));
         lastCommTick = lastProcTick = getTimeSecs();
