@@ -14,7 +14,8 @@
 
 
 #define PROC_TICK_DURATION 0.016f
-#define COMM_TICK_DURATION 0.016f
+#define COMM_TICK_DURATION 0.05f
+#define MAX_TIME_WITHOUT_COMM 10.0f
 
 
 double getTimeSecs() {
@@ -32,6 +33,10 @@ void hostLoop(
     CommandsBufPlayer2 *commandsPlayer2
 ) {
     double now = getTimeSecs();
+    if (now - host->last_comm > MAX_TIME_WITHOUT_COMM) {
+        game->hotData->gameState = CLOSE;
+        return;
+    }
 
     // TODO: Apply rollback
     if (now - *lastProcTick >= PROC_TICK_DURATION) {
@@ -63,7 +68,7 @@ void hostLoop(
                     game->hotData->gameState = CLOSE;
                     return;
                 }
-            }
+            } else if (n > 0) host->last_comm = now;
         }
 
         int n = sendto(
@@ -96,6 +101,10 @@ void remoteLoop(
     CommandsBufPlayer2 *commandsBuf
 ) {
     double now = getTimeSecs();
+    if (now - remote->last_comm > MAX_TIME_WITHOUT_COMM) {
+        game->hotData->gameState = CLOSE;
+        return;
+    }
 
     if (now - *lastProcTick >= PROC_TICK_DURATION) {
         int currentCommand = commandsBuf->size;
@@ -144,7 +153,7 @@ void remoteLoop(
                 game->hotData->gameState = CLOSE;
                 return;
             }
-        }
+        } else if (n > 0) remote->last_comm = now;
 
         commandsBuf->size = 0;
         game->hotData->menuButton = ntohl(snap->menuButton);
@@ -177,7 +186,7 @@ int mainLoop(const char *player) {
     // Initialize game loop
     if (strcmp(player, "host") == 0) {
         CommandsBufPlayer2 *commandsPlayer2 = initCommandsBuf((int)(COMM_TICK_DURATION/PROC_TICK_DURATION));
-        lastCommTick = lastProcTick = getTimeSecs();
+        lastCommTick = lastProcTick = host.last_comm = getTimeSecs();
         while (game.hotData->gameState != CLOSE) {
             hostLoop(
                 &game,
@@ -193,7 +202,7 @@ int mainLoop(const char *player) {
         close(host.host_fd);
     } else if (strcmp(player, "remote") == 0) {
         CommandsBufPlayer2 *commands = initCommandsBuf((int)(COMM_TICK_DURATION/PROC_TICK_DURATION));
-        lastCommTick = lastProcTick = getTimeSecs();
+        lastCommTick = lastProcTick = remote.last_comm = getTimeSecs();
         while (game.hotData->gameState != CLOSE) {
             remoteLoop(
                 &game,

@@ -74,12 +74,14 @@ typedef struct Remote {
     int remote_fd;
     struct sockaddr_in host_addr, remote_addr;
     socklen_t host_len;
+    double last_comm;
 } Remote;
 
 typedef struct Host {
     int host_fd;
     struct sockaddr_in host_addr, remote_addr;
     socklen_t remote_len;
+    double last_comm;
 } Host;
 
 // Used to send the remote host the entities to draw
