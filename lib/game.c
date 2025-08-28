@@ -8,8 +8,7 @@
 
 #include "gameData.h"
 #include "gameLogic.h"
-#include "host.h"
-#include "remote.h"
+#include "peer.h"
 #include "render.h"
 
 
@@ -27,18 +26,17 @@ double getTimeSecs() {
 void hostLoop(
     Game *game,
     SnapshotGameState *snap,
-    Host *host,
+    Peer *peer,
     double *lastProcTick,
     double *lastCommTick,
     CommandsBufPlayer2 *commandsPlayer2
 ) {
     double now = getTimeSecs();
-    if (now - host->last_comm > MAX_TIME_WITHOUT_COMM) {
+    if (now - peer->lastComm > MAX_TIME_WITHOUT_COMM) {
         game->hotData->gameState = CLOSE;
         return;
     }
 
-    // TODO: Apply rollback
     if (now - *lastProcTick >= PROC_TICK_DURATION) {
         processInput(&game->hotData->input);
         updateGame(game, commandsPlayer2, PROC_TICK_DURATION);
@@ -50,44 +48,31 @@ void hostLoop(
     }
 
     if (now - *lastCommTick >= COMM_TICK_DURATION) {
-        buildSnapshot(game, snap);
-
         if (game->hotData->gameState == PLAYING) {
-            int n = recvfrom(
-                host->host_fd,
-                ((char *)commandsPlayer2->input ),
-                commandsPlayer2->capacity * sizeof(Input),
-                0,
-                (struct sockaddr *)&host->remote_addr,
-                &host->remote_len
+            int recvResult = recvData(
+                peer,
+                (char *)commandsPlayer2->input,
+                sizeof(Input) * commandsPlayer2->capacity
             );
 
-            if (n < 0) {
-                if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                    perror("error receiving commands.\n");
-                    game->hotData->gameState = CLOSE;
-                    return;
-                }
-            } else if (n > 0) host->last_comm = now;
-        }
-
-        int n = sendto(
-            host->host_fd,
-            (char *)snap,
-            sizeof(SnapshotGameState),
-            0,
-            (struct sockaddr *)&host->remote_addr,
-            host->remote_len
-        );
-        
-        if (n < 0) {
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                perror("error sending snapshot.\n");
+            if (recvResult == 0) {
+                peer->lastComm = now;
+            } else if (recvResult == -2) {
+                perror("error receiving commands from player 2.\n");
                 game->hotData->gameState = CLOSE;
                 return;
             }
         }
 
+        buildSnapshot(game, snap);
+        int sendResult = sendData(peer, (char *)snap, sizeof(SnapshotGameState));
+        if (sendResult == -2) {
+            perror("error sending snapshot.\n");
+            game->hotData->gameState = CLOSE;
+            return;
+        }
+
+        // NOTE: I only want to update that if the communication was a success?
         *lastCommTick = now;
     }
 }
@@ -95,13 +80,13 @@ void hostLoop(
 void remoteLoop(
     Game *game,
     SnapshotGameState *snap,
-    Remote *remote,
+    Peer *peer,
     double *lastProcTick,
     double *lastCommTick,
     CommandsBufPlayer2 *commandsBuf
 ) {
     double now = getTimeSecs();
-    if (now - remote->last_comm > MAX_TIME_WITHOUT_COMM) {
+    if (now - peer->lastComm > MAX_TIME_WITHOUT_COMM) {
         game->hotData->gameState = CLOSE;
         return;
     }
@@ -120,61 +105,51 @@ void remoteLoop(
 
     if (now - *lastCommTick >= COMM_TICK_DURATION) {
         if (game->hotData->gameState == PLAYING) {
-            int n = sendto(
-                remote->remote_fd,
-                ((char *)commandsBuf->input),
-                sizeof(Input) * commandsBuf->capacity,
-                0,
-                (struct sockaddr *)&remote->host_addr,
-                remote->host_len
+            int sendResult = sendData(
+                peer, (char *)commandsBuf->input, sizeof(Input) * commandsBuf->capacity
             );
 
-            if (n < 0) {
-                if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                    perror("error sending commands.\n");
-                    game->hotData->gameState = CLOSE;
-                    return;
-                }
-            }
-        }
-
-        int n = recvfrom(
-            remote->remote_fd,
-            ((char *)snap),
-            sizeof(SnapshotGameState),
-            0,
-            (struct sockaddr *)&remote->host_addr,
-            &remote->host_len
-        );
-
-        if (n < 0) {
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                perror("error receiving snapshot.\n");
+            if (sendResult == -2) {
+                perror("error sending commands.\n");
                 game->hotData->gameState = CLOSE;
                 return;
             }
-        } else if (n > 0) remote->last_comm = now;
+        }
+
+        int recvResult = recvData(peer, (char *)snap, sizeof(SnapshotGameState));
+        if (recvResult == 0) {
+            peer->lastComm = now;
+            game->hotData->menuButton = ntohl(snap->menuButton);
+            game->hotData->gameState = ntohl(snap->gameState);
+        } else if (recvResult == -2) {
+            perror("error receiving snapshot.\n");
+            game->hotData->gameState = CLOSE;
+            return;
+        }
 
         commandsBuf->size = 0;
-        game->hotData->menuButton = ntohl(snap->menuButton);
-        game->hotData->gameState = ntohl(snap->gameState);
         *lastCommTick = now;
     }
 }
 
 int mainLoop(const char *player) {
     Game game;
-    Host host;
-    Remote remote;
+    Peer selfPeer;
     SnapshotGameState snap = {0};
     double lastCommTick;
     double lastProcTick;
 
+    int peerInitResult;
     // Initialize network
     if (strcmp(player, "host") == 0) {
-        initHostTCP(&host, HOST_PORT, REMOTE_PORT);
+        peerInitResult = initPeerUDP(&selfPeer, "127.0.0.1", "127.0.0.1", HOST_PORT, REMOTE_PORT);
     } else if (strcmp(player, "remote") == 0) {
-        initRemoteTCP(&remote, HOST_PORT, REMOTE_PORT);
+        peerInitResult = initPeerUDP(&selfPeer, "127.0.0.1", "127.0.0.1", REMOTE_PORT, HOST_PORT);
+    }
+
+    if (peerInitResult < 0) {
+        perror("failed to initialize network.\n");
+        return -1;
     }
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);
@@ -183,45 +158,41 @@ int mainLoop(const char *player) {
     initGame(&game);
     SetExitKey(KEY_NULL);
 
+    CommandsBufPlayer2 *commandsPlayer2 = initCommandsBuf((int)(COMM_TICK_DURATION/PROC_TICK_DURATION));
+    lastCommTick = lastProcTick = selfPeer.lastComm = getTimeSecs();
+
     // Initialize game loop
     if (strcmp(player, "host") == 0) {
-        CommandsBufPlayer2 *commandsPlayer2 = initCommandsBuf((int)(COMM_TICK_DURATION/PROC_TICK_DURATION));
-        lastCommTick = lastProcTick = host.last_comm = getTimeSecs();
         while (game.hotData->gameState != CLOSE) {
             hostLoop(
                 &game,
                 &snap,
-                &host,
+                &selfPeer,
                 &lastProcTick,
                 &lastCommTick,
                 commandsPlayer2
             );
         }
-
-        cleanupCommandsBuf(&commandsPlayer2);
-        close(host.host_fd);
     } else if (strcmp(player, "remote") == 0) {
-        CommandsBufPlayer2 *commands = initCommandsBuf((int)(COMM_TICK_DURATION/PROC_TICK_DURATION));
-        lastCommTick = lastProcTick = remote.last_comm = getTimeSecs();
         while (game.hotData->gameState != CLOSE) {
             remoteLoop(
                 &game,
                 &snap,
-                &remote,
+                &selfPeer,
                 &lastProcTick,
                 &lastCommTick,
-                commands
+                commandsPlayer2
             );
 
             // Will apply only with the rollback
-            commands->size++;
-            commands->size %= commands->capacity;
+            commandsPlayer2->size++;
+            commandsPlayer2->size %= commandsPlayer2->capacity;
         }
 
-        close(remote.remote_fd);
-        cleanupCommandsBuf(&commands);
     }
-
+    
+    close(selfPeer.sockFD);
+    cleanupCommandsBuf(&commandsPlayer2);
     cleanupGame(&game);
     CloseAudioDevice();
     CloseWindow();

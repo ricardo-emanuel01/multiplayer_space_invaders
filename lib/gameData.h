@@ -70,19 +70,12 @@ typedef struct SoundEventsBuf {
     int currentIdx;
 } SoundEventsBuf;
 
-typedef struct Remote {
-    int remote_fd;
-    struct sockaddr_in host_addr, remote_addr;
-    socklen_t host_len;
-    double last_comm;
-} Remote;
-
-typedef struct Host {
-    int host_fd;
-    struct sockaddr_in host_addr, remote_addr;
-    socklen_t remote_len;
-    double last_comm;
-} Host;
+typedef struct Peer {
+    int sockFD;
+    struct sockaddr_in selfAddr, remoteAddr;
+    socklen_t remoteLen;
+    double lastComm;
+} Peer;
 
 // Used to send the remote host the entities to draw
 typedef struct EntityBounds {
