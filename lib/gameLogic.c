@@ -9,7 +9,6 @@
 #include "gameData.h"
 
 
-// The index will be incremented at each frame
 void playSoundFX(Game *game, SoundSelect sound) {
     switch (sound) {
         case ALIEN_EXPLOSION_FX:

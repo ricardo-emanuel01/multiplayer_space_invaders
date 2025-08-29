@@ -101,6 +101,7 @@ bool collisionIteratorReachedEnd(CollisionIterator *it) {
 void collisionIteratorNext(CollisionIterator *it) {
     Entity *currentBullet = getCurrentEntity(&it->bullets);
     Entity *currentAlien  = getCurrentEntity(&it->aliens);
+
     if (currentBullet != NULL && currentAlien != NULL) {
         if (getCurrentEntity(&it->bullets)->state == INACTIVE && getCurrentEntity(&it->aliens)->state == DEAD)  {
             iteratorNext(&it->bullets);

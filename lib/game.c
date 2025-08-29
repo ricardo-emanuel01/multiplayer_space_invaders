@@ -184,11 +184,9 @@ int mainLoop(const char *player) {
                 commandsPlayer2
             );
 
-            // Will apply only with the rollback
             commandsPlayer2->size++;
             commandsPlayer2->size %= commandsPlayer2->capacity;
         }
-
     }
     
     close(selfPeer.sockFD);
