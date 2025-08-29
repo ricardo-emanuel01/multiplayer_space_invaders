@@ -69,7 +69,6 @@ Entity *getCurrentEntity(EntitiesIterator *it);
 
 CollisionIterator createCollisionIterator(Entity *bullets, Entity *horde, uint16_t sizeBullets, uint16_t sizeHorde);
 bool collisionIteratorReachedEnd(CollisionIterator *it);
-bool checkPairCollision(CollisionIterator *it, int *bulletIdx, int *alienIdx);
 void collisionIteratorNext(CollisionIterator *it);
 
 Entity *createPlayerShips();

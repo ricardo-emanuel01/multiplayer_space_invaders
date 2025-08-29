@@ -107,18 +107,6 @@ bool collisionIteratorReachedEnd(CollisionIterator *it) {
     return (iteratorReachedEnd(&it->bullets) || iteratorReachedEnd(&it->aliens));
 }
 
-bool checkPairCollision(
-    CollisionIterator *it, int *bulletIdx, int *alienIdx
-) {
-    *bulletIdx = getCurrentIndex(&it->bullets);
-    *alienIdx  = getCurrentIndex(&it->aliens);
-
-    if (bulletIdx != NULL && alienIdx != NULL) {
-        return CheckCollisionRecs(it->bullets.entities[*bulletIdx].bounds, it->aliens.entities[*alienIdx].bounds);
-    }
-    return false;
-}
-
 void collisionIteratorNext(CollisionIterator *it) {
     Entity *currentBullet = getCurrentEntity(&it->bullets);
     Entity *currentAlien  = getCurrentEntity(&it->aliens);

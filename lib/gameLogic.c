@@ -191,19 +191,21 @@ void checkShipPowerupCollision(Game *game) {
 void checkAlienBulletCollision(Game *game) {
     CollisionIterator it = createCollisionIterator(game->bullets, game->horde, game->nBullets, nRowsAliens*nColsAliens);
     int dropCheck = 15;
-    int bulletIdx, alienIdx;
+    Entity *bullet, *alien;
 
     while (!collisionIteratorReachedEnd(&it)) {
-        if (checkPairCollision(&it, &bulletIdx, &alienIdx)) {
-            game->bullets[bulletIdx].state = INACTIVE;
-            game->horde[alienIdx].state    = DEAD;
+        bullet = getCurrentEntity(&it.bullets);
+        alien = getCurrentEntity(&it.aliens);
+        if (CheckCollisionRecs(getCurrentEntity(&it.aliens)->bounds, getCurrentEntity(&it.bullets)->bounds)) {
+            bullet->state = INACTIVE;
+            alien->state = DEAD;
             game->enemiesAlive--;
             playSoundFX(game, ALIEN_EXPLOSION_FX);
             if (rand() % 100 < dropCheck) {
-                generatePowerup(&game->horde[alienIdx].bounds, game->powerups, game->nPowerups);
+                generatePowerup(&alien->bounds, game->powerups, game->nPowerups);
             }
 
-            if (alienIdx == game->hordeLastAlive) {
+            if (getCurrentIndex(&it.aliens) == game->hordeLastAlive) {
                 for (; game->hordeLastAlive > 0 && game->horde[game->hordeLastAlive].state == DEAD; --game->hordeLastAlive);
             }
         }
