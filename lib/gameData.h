@@ -17,7 +17,6 @@
 #define REMOTE_PORT 2113
 
 typedef enum GameState {
-    CONNECTING,
     MENU,
     PLAYING,
     PAUSED,
