@@ -425,7 +425,7 @@ void updateHorde(Game *game, float deltaTime) {
     // Checks collision with the screen bounds
     if (game->hotData->hordeSpeed > 0.0f) {
         float maxHorizontalPos = getAliensMaxHorizontalPos(&hordeIt);
-        if (maxHorizontalPos + 32.0f >= game->coldData->screenLimits[RIGHT]) {
+        if (maxHorizontalPos + game->horde[0].bounds.width >= game->coldData->screenLimits[RIGHT]) {
             game->hotData->hordeSpeed += game->coldData->hordeSpeedIncrease;
             game->hotData->hordeSpeed *= -1;
             game->hotData->hordeDown = true;
