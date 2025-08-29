@@ -148,12 +148,13 @@ Entity *createPlayerShips() {
             .bounds = {
                 .height = height,
                 .width  = width,
-                .x      = x - width,
                 .y      = y
             },
             .state = ACTIVE,
             .type  = SHIP
         };
+        if (i == 0) ships[i].bounds.x = x - width;
+        else ships[i].bounds.x = x + width;
     }
 
     return ships;
@@ -285,21 +286,26 @@ void generatePowerup(Rectangle *bounds, Entity *powerups, int n) {
     if ((rand() % 100) < 50) powerupType = FAST_MOVE;
     else powerupType = FAST_SHOT;
 
-    // TODO: eliminate the magic numbers
-    if (powerupType == FAST_MOVE) {
-        for (int i = 0; i < 10; ++i) {
-            if (powerups[i].state != ACTIVE) {
-                newPowerupIdx = i;
-                break;
+    switch (powerupType) {
+        case FAST_MOVE:
+        {
+            for (int i = 0; i < n / 2; ++i) {
+                if (powerups[i].state != ACTIVE) {
+                    newPowerupIdx = i;
+                    break;
+                }
             }
-        }
-    } else {
-        for (int i = 10; i < 20; ++i) {
-            if (powerups[i].state != ACTIVE) {
-                newPowerupIdx = i;
-                break;
+        } break;
+        case FAST_SHOT:
+        {
+            for (int i = n / 2; i < n; ++i) {
+                if (powerups[i].state != ACTIVE) {
+                    newPowerupIdx = i;
+                    break;
+                }
             }
-        }
+        } break;
+        default: break;
     }
 
     if (newPowerupIdx < n) {

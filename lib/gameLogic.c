@@ -9,7 +9,6 @@
 #include "gameData.h"
 
 
-// NOTE: How to deal with that naming issue??
 // The index will be incremented at each frame
 void playSoundFX(Game *game, SoundSelect sound) {
     switch (sound) {
@@ -196,7 +195,6 @@ void checkAlienBulletCollision(Game *game) {
 
     while (!collisionIteratorReachedEnd(&it)) {
         if (checkPairCollision(&it, &bulletIdx, &alienIdx)) {
-            // NOTE: should that block be a separate function? 
             game->bullets[bulletIdx].state = INACTIVE;
             game->horde[alienIdx].state    = DEAD;
             game->enemiesAlive--;
@@ -208,7 +206,6 @@ void checkAlienBulletCollision(Game *game) {
             if (alienIdx == game->hordeLastAlive) {
                 for (; game->hordeLastAlive > 0 && game->horde[game->hordeLastAlive].state == DEAD; --game->hordeLastAlive);
             }
-            // ---------------------------------
         }
 
         collisionIteratorNext(&it);

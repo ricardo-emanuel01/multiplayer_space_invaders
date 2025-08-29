@@ -129,10 +129,6 @@ void drawEndStatus(Game *game) {
     DrawText(message, posX, 150.0f, 200, RAYWHITE);
 }
 
-void drawConnectingScreen() {
-
-}
-
 void drawMenu(Game *game) {
     const float height = 400.0f;
     const float width = 600.0f;
@@ -209,19 +205,13 @@ void drawGame(Game *game) {
     drawEntities(game, &powerupsIt);
 
     if (
-        game->hotData->gameState != PLAYING    &&
-        game->hotData->gameState != CONNECTING &&
-        game->hotData->gameState != CLOSE
+        game->hotData->gameState != PLAYING  && game->hotData->gameState != CLOSE
     ) {
         drawMenu(game);
     }
 
     if (game->hotData->gameState == WIN || game->hotData->gameState == LOSE) {
         drawEndStatus(game);
-    }
-
-    if (game->hotData->gameState == CONNECTING) {
-        drawConnectingScreen();
     }
 }
 
