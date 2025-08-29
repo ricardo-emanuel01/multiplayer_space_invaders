@@ -143,27 +143,18 @@ Entity *createPlayerShips() {
     const float y = 900.0f;
 
     Entity *ships = (Entity *)malloc(2 * sizeof(Entity));
-    ships[0] = (Entity) {
-        .bounds = {
-            .height = height,
-            .width  = width,
-            .x      = x - width,
-            .y      = y
-        },
-        .state = ACTIVE,
-        .type  = SHIP
-    };
-
-    ships[1] = (Entity) {
-        .bounds = {
-            .height = height,
-            .width  = width,
-            .x      = x + width,
-            .y      = y
-        },
-        .state = ACTIVE,
-        .type  = SHIP
-    };
+    for (int i = 0; i < 2; ++i) {
+        ships[i] = (Entity) {
+            .bounds = {
+                .height = height,
+                .width  = width,
+                .x      = x - width,
+                .y      = y
+            },
+            .state = ACTIVE,
+            .type  = SHIP
+        };
+    }
 
     return ships;
 }
