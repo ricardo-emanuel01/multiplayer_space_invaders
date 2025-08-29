@@ -69,11 +69,7 @@ void drawEntity(Game *game, Entity *entity) {
 
 void drawEntities(Game *game, EntitiesIterator *it) {
     while (!iteratorReachedEnd(it)) {
-        int index = getCurrentIndex(it);
-        if (index != -1) {
-            drawEntity(game, &it->entities[index]);
-        }
-
+        drawEntity(game, getCurrentEntity(it));
         iteratorNext(it);
     }
 }

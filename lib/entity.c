@@ -51,14 +51,6 @@ bool iteratorReachedEnd(EntitiesIterator *it) {
     return it->currentIndex >= it->size;
 }
 
-int getCurrentIndex(EntitiesIterator *it) {
-    if (!iteratorReachedEnd(it)) {
-        return it->currentIndex;
-    }
-
-    return -1;
-}
-
 void iteratorNext(EntitiesIterator *it) {
     if (!iteratorReachedEnd(it)) {
         it->currentIndex++;
@@ -90,8 +82,7 @@ void iteratorNext(EntitiesIterator *it) {
 
 Entity *getCurrentEntity(EntitiesIterator *it) {
     if (iteratorReachedEnd(it)) return NULL;
-    int index = getCurrentIndex(it);
-    return &it->entities[index];
+    return &it->entities[it->currentIndex];
 }
 
 CollisionIterator createCollisionIterator(

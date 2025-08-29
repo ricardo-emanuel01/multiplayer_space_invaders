@@ -63,7 +63,6 @@ typedef struct CollisionIterator {
 EntitiesIterator createIterator(Entity *, IteratorType, uint16_t size);
 void resetIterator(EntitiesIterator *it);
 bool iteratorReachedEnd(EntitiesIterator *it);
-int getCurrentIndex(EntitiesIterator *it);
 void iteratorNext(EntitiesIterator *it);
 Entity *getCurrentEntity(EntitiesIterator *it);
 
