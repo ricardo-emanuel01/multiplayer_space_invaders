@@ -136,9 +136,9 @@ void drawMenu(Game *game) {
     const float y = (game->screenHeight - height)/2.0f;
     Rectangle background = {
         .height = height,
-        .width = width,
-        .x = x,
-        .y = y
+        .width  = width,
+        .x      = x,
+        .y      = y
     };
 
     drawMenuBackground(&background);
@@ -317,13 +317,13 @@ void drawEntityNetwork(Game *game, EntityBounds bounds, EntityType type) {
 }
 
 EntityType getEntityType(int index) {
-    if (index < 22) return ALIEN1;
-    if (index < 33) return ALIEN2;
-    if (index < 55) return ALIEN3;
-    if (index < 56) return ENEMY_SHIP;
-    if (index < 58) return SHIP;
-    if (index < 68) return FAST_MOVE;
-    if (index < 78) return FAST_SHOT;
+    if (index < 22)  return ALIEN1;
+    if (index < 33)  return ALIEN2;
+    if (index < 55)  return ALIEN3;
+    if (index < 56)  return ENEMY_SHIP;
+    if (index < 58)  return SHIP;
+    if (index < 68)  return FAST_MOVE;
+    if (index < 78)  return FAST_SHOT;
     if (index < 118) return BULLET;
 }
 
